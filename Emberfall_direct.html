@@ -1,0 +1,3760 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EMBERFALL — Chronicles of the Hollow Moon</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: #05070c; }
+  body { font-family: Georgia, 'Palatino Linotype', 'Times New Roman', serif; color: #cfc4a8; }
+  #gl { position: fixed; inset: 0; width: 100%; height: 100%; display: block; cursor: crosshair; }
+
+  /* ---------- overlays ---------- */
+  #vignette { position: fixed; inset: 0; pointer-events: none; z-index: 5;
+    background: radial-gradient(ellipse at center, transparent 52%, rgba(2,3,8,0.55) 100%); }
+  #dmgflash { position: fixed; inset: 0; pointer-events: none; z-index: 6; opacity: 0;
+    background: radial-gradient(ellipse at center, transparent 40%, rgba(140,10,10,0.5) 100%); }
+  #dmgflash.on { animation: dmg 0.5s ease-out; }
+  @keyframes dmg { 0% { opacity: 1; } 100% { opacity: 0; } }
+  .letterbox { position: fixed; left: 0; right: 0; height: 11vh; background: #000; z-index: 20;
+    pointer-events: none; transition: transform 1.2s cubic-bezier(.6,0,.3,1); }
+  #letterTop { top: 0; transform-origin: top; transform: scaleY(0); }
+  #letterBottom { bottom: 0; transform-origin: bottom; transform: scaleY(0); }
+  #fadeBlack { position: fixed; inset: 0; background: #000; z-index: 40; pointer-events: none;
+    opacity: 1; transition: opacity 1.4s ease; }
+
+  /* ---------- HUD ---------- */
+  #hud { position: fixed; inset: 0; pointer-events: none; z-index: 10; display: none; }
+  .hudLabel { font-variant: small-caps; letter-spacing: 3px; font-size: 11px; color: #9c8d68; }
+  #castleWrap { position: absolute; top: 18px; left: 50%; transform: translateX(-50%); text-align: center; width: 420px; }
+  #castleWrap .frame { border: 1px solid #5a4c30; background: linear-gradient(180deg, rgba(8,10,16,0.75), rgba(8,10,16,0.55));
+    padding: 7px 14px 9px; box-shadow: 0 0 24px rgba(0,0,0,0.6); }
+  #castleBarWrap { height: 9px; background: #17120c; border: 1px solid #4a3d26; margin-top: 5px; }
+  #castleFill { height: 100%; width: 100%; background: linear-gradient(90deg, #7d1f1f, #c94f2a); transition: width 0.3s; }
+  #castleFill.low { background: linear-gradient(90deg, #801010, #d02020); animation: pulse 0.8s infinite; }
+  @keyframes pulse { 50% { filter: brightness(1.5); } }
+  #waveNum { position: absolute; top: 16px; left: 26px; font-variant: small-caps; letter-spacing: 4px;
+    font-size: 15px; color: #c9a86a; text-shadow: 0 0 12px rgba(201,168,106,0.4); }
+  #killWrap { position: absolute; top: 16px; right: 26px; text-align: right; }
+  #kills { font-size: 20px; color: #e0d5b8; text-shadow: 0 0 10px rgba(0,0,0,0.8); }
+
+  #portraitWrap { position: absolute; left: 24px; bottom: 22px; display: flex; align-items: center; gap: 12px; }
+  #portrait { width: 66px; height: 66px; border: 2px solid #5a4c30; border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #232c3d, #0a0d14 75%);
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 0 18px rgba(0,0,0,0.7), inset 0 0 12px rgba(0,0,0,0.8); }
+  #portrait svg { width: 38px; height: 38px; opacity: 0.9; }
+  #hpWrap { width: 240px; }
+  #hpBarWrap { height: 11px; background: #17120c; border: 1px solid #4a3d26; margin-top: 5px; }
+  #hpFill { height: 100%; width: 100%; background: linear-gradient(90deg, #6e7f28, #a8b83c); transition: width 0.25s; }
+  #hpFill.low { background: linear-gradient(90deg, #7d1f1f, #c93a2a); animation: pulse 0.7s infinite; }
+
+  #hint { position: absolute; bottom: 20px; right: 26px; text-align: right; font-size: 12px;
+    color: #8a7d5e; letter-spacing: 2px; font-variant: small-caps; }
+
+  /* ---------- subtitle / banner ---------- */
+  #subtitle { position: fixed; left: 50%; bottom: 13vh; transform: translateX(-50%); z-index: 22;
+    text-align: center; max-width: 860px; opacity: 0; transition: opacity 0.7s; pointer-events: none; }
+  #subtitleName { display: block; font-variant: small-caps; letter-spacing: 5px; font-size: 13px;
+    color: #c9a86a; margin-bottom: 6px; text-shadow: 0 2px 8px #000; }
+  #subtitleText { font-size: 21px; line-height: 1.5; color: #e8e0c8; text-shadow: 0 2px 10px #000, 0 0 30px rgba(0,0,0,0.9); }
+  #banner { position: fixed; left: 0; right: 0; top: 30vh; text-align: center; z-index: 22;
+    opacity: 0; pointer-events: none; }
+  #banner.show { animation: ban 3.6s ease forwards; }
+  @keyframes ban { 0% { opacity: 0; transform: scale(0.96); } 12% { opacity: 1; transform: scale(1); }
+    82% { opacity: 1; } 100% { opacity: 0; } }
+  #bannerTitle { font-size: 46px; letter-spacing: 14px; font-variant: small-caps; color: #d8c99a;
+    text-shadow: 0 0 40px rgba(201,168,106,0.45), 0 2px 14px #000; }
+  #bannerSub { font-size: 17px; letter-spacing: 6px; font-variant: small-caps; color: #8f8264; margin-top: 8px; }
+
+  /* ---------- screens ---------- */
+  .screen { position: fixed; inset: 0; z-index: 30; display: none; flex-direction: column;
+    align-items: center; justify-content: center; text-align: center;
+    background: radial-gradient(ellipse at center, rgba(6,8,14,0.55) 0%, rgba(3,4,8,0.88) 100%); }
+  #title { display: flex; background: transparent; }
+  .ornament { width: 220px; height: 1px; background: linear-gradient(90deg, transparent, #8a7448, transparent);
+    margin: 18px auto; position: relative; }
+  .ornament::after { content: ''; position: absolute; left: 50%; top: -4px; width: 8px; height: 8px;
+    transform: translateX(-50%) rotate(45deg); background: #c9a86a; box-shadow: 0 0 12px rgba(201,168,106,0.8); }
+  #gameTitle { font-size: 84px; letter-spacing: 26px; font-weight: normal; padding-left: 26px;
+    background: linear-gradient(180deg, #f0e2b6 0%, #c9a86a 45%, #7a5f34 100%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    filter: drop-shadow(0 0 26px rgba(201,168,106,0.35)) drop-shadow(0 3px 8px #000); }
+  #gameSub { font-variant: small-caps; letter-spacing: 9px; font-size: 17px; color: #8f8264; margin-top: 10px; }
+  #titleEnter { margin-top: 52px; font-variant: small-caps; letter-spacing: 7px; font-size: 19px;
+    color: #d8c99a; cursor: pointer; transition: opacity 0.9s; text-shadow: 0 0 18px rgba(201,168,106,0.5); }
+  #titleQuote { position: absolute; bottom: 5vh; font-style: italic; font-size: 14px; color: #6f6551;
+    letter-spacing: 1px; max-width: 700px; line-height: 1.7; }
+  .screen h2 { font-size: 44px; letter-spacing: 12px; font-variant: small-caps; font-weight: normal; color: #d8c99a;
+    text-shadow: 0 0 30px rgba(0,0,0,0.9); }
+  .screen p { margin: 18px 0 26px; font-size: 17px; color: #a99b78; max-width: 640px; line-height: 1.7; }
+  .btn { pointer-events: auto; cursor: pointer; font-family: inherit; font-variant: small-caps;
+    letter-spacing: 5px; font-size: 16px; color: #d8c99a; background: rgba(20,16,10,0.6);
+    border: 1px solid #5a4c30; padding: 13px 42px; transition: all 0.25s; }
+  .btn:hover { background: rgba(60,46,24,0.7); border-color: #c9a86a; box-shadow: 0 0 24px rgba(201,168,106,0.25); }
+
+  /* ---------- debug ---------- */
+  #errbox { position: fixed; left: 12px; bottom: 12px; max-width: 70vw; max-height: 45vh; overflow: auto;
+    z-index: 100; display: none; background: rgba(20,0,0,0.85); color: #ff9a8a; border: 1px solid #7a2010;
+    font: 12px/1.5 monospace; padding: 10px 14px; white-space: pre-wrap; }
+  #dbg { position: fixed; left: 12px; top: 12px; z-index: 100; display: block; color: #7fd4a0;
+    font: 11px/1.5 monospace; text-shadow: 0 1px 3px #000; pointer-events: none; white-space: pre-wrap; }
+</style>
+</head>
+<body>
+  <canvas id="gl"></canvas>
+  <div id="vignette"></div>
+  <div id="dmgflash"></div>
+  <div id="letterTop" class="letterbox"></div>
+  <div id="letterBottom" class="letterbox"></div>
+
+  <div id="hud">
+    <div id="waveNum">WAVE I</div>
+    <div id="killWrap"><div class="hudLabel">Hollow banished</div><div id="kills">0</div></div>
+    <div id="castleWrap"><div class="frame">
+      <div class="hudLabel">Aldervale Keep — the Ember Heart</div>
+      <div id="castleBarWrap"><div id="castleFill"></div></div>
+    </div></div>
+    <div id="portraitWrap">
+      <div id="portrait">
+        <svg viewBox="0 0 24 24"><path d="M12 2C7.6 2 4.5 5.6 4.5 10.5V19h3.2l1-3.6h6.6l1 3.6h3.2v-8.5C19.5 5.6 16.4 2 12 2zM10.4 7.5h3.2v5.4h-3.2z" fill="#c9a86a"/></svg>
+      </div>
+      <div id="hpWrap">
+        <div class="hudLabel">The Last Warden</div>
+        <div id="hpBarWrap"><div id="hpFill"></div></div>
+      </div>
+    </div>
+    <div id="hint"></div>
+  </div>
+
+  <div id="subtitle"><span id="subtitleName"></span><span id="subtitleText"></span></div>
+  <div id="banner"><div id="bannerTitle"></div><div id="bannerSub"></div></div>
+
+  <div id="title" class="screen">
+    <div style="margin-top:-6vh">
+      <div id="gameTitle">EMBERFALL</div>
+      <div id="gameSub">Chronicles of the Hollow Moon</div>
+      <div class="ornament"></div>
+      <div id="titleEnter">— Click to Enter Aldervale —</div>
+    </div>
+    <div id="titleQuote">"When the moon turns hollow and the dead grow bold,<br>one Warden stands between the dark and the Ember Heart."</div>
+  </div>
+
+  <div id="pause" class="screen">
+    <h2>The Night Holds</h2>
+    <p>The wraiths wait beyond the mist. Aldervale's fate rests with you, Warden.</p>
+    <button class="btn" id="btnResume">Resume the Watch</button>
+  </div>
+
+  <div id="defeat" class="screen">
+    <h2 style="color:#c95545">The Ember Heart Gutters</h2>
+    <p id="defeatText">Darkness takes Aldervale. The Hollow Moon waxes over a silent kingdom...<br><span id="defeatStats" style="font-size:14px;color:#7a705a"></span></p>
+    <button class="btn" id="btnRetry">Rise Again</button>
+  </div>
+
+  <div id="victory" class="screen">
+    <h2 style="color:#d8e0a0">Dawn Breaks</h2>
+    <p id="victoryText">The Hollow Moon wanes. The wraiths scatter like ash on the wind.<br>Aldervale endures — thanks to you, Warden.<br><span id="victoryStats" style="font-size:14px;color:#7a705a"></span></p>
+    <button class="btn" id="btnRetry2">Stand Watch Again</button>
+  </div>
+
+  <div id="fadeBlack"></div>
+  <pre id="errbox"></pre>
+  <pre id="dbg"></pre>
+
+  <script>
+(function (E) {
+  // ============ EMBERFALL :: 00_boot.js ============
+  // Global namespace, URL params, logging, error overlay.
+  E.PARAMS = (function () {
+    const p = {};
+    const q = new URLSearchParams(location.search);
+    q.forEach(function (v, k) { p[k] = v; });
+    p.skipintro = p.skipintro === '1' || p.skipintro === 'true';
+    p.mute = p.mute === '1';
+    p.debug = p.debug === '1';
+    p.autotest = p.autotest === '1';
+    p.grass = p.grass ? parseInt(p.grass, 10) : 85000;
+    p.seed = p.seed ? parseFloat(p.seed) : 7;
+    p.wave = p.wave ? parseInt(p.wave, 10) : 0;
+    p.exposure = p.exposure ? parseFloat(p.exposure) : 0;
+    p.noparticles = p.noparticles === '1';
+    p.nograss = p.nograss === '1';
+    p.nosky = p.nosky === '1';
+    p.noterrain = p.noterrain === '1';
+    p.noobj = p.noobj === '1';
+    p.nolights = p.nolights === '1';
+    p.hdr8 = p.hdr8 === '1';
+    p.nobloom = p.nobloom === '1';
+    p.dbg = p.dbg ? parseInt(p.dbg, 10) : 0;
+    p.blit = p.blit === '1';
+    p.fast = p.fast === '1';
+    p.res = p.res || '';      // e.g. res=640x360 forces internal resolution (blit mode)
+    p.shdw = p.shdw ? parseInt(p.shdw, 10) : 2048;
+    p.noshadow = p.noshadow === '1';
+    p.nopost = p.nopost === '1';
+    p.nomsaa = p.nomsaa === '1';
+    p.throttle = p.throttle ? parseInt(p.throttle, 10) : 0;
+    p.noinfo = p.noinfo === '1';
+    p.noraf = p.noraf === '1';
+    p.gputest = p.gputest === '1';
+    p.nodraw = p.nodraw === '1';
+    p.depthtest = p.depthtest === '1';
+    p.nodepth = p.nodepth === '1';
+    p.nocomposite = p.nocomposite === '1';
+    return p;
+  })();
+
+  E.log = function () {
+    const args = ['[Emberfall]'].concat(Array.prototype.slice.call(arguments));
+    try { console.log.apply(console, args); } catch (e) {}
+    const el = document.getElementById('dbg');
+    if (el && E.PARAMS.debug) {
+      E._dbgLines = E._dbgLines || [];
+      E._dbgLines.push(args.slice(1).join(' '));
+      if (E._dbgLines.length > 14) E._dbgLines.shift();
+      el.textContent = E._dbgLines.join('\n');
+    }
+  };
+
+  E.fatal = function (msg) {
+    try { console.error('[Emberfall:FATAL]', msg); } catch (e) {}
+    const box = document.getElementById('errbox');
+    if (box) {
+      box.style.display = 'block';
+      box.textContent = String(msg).slice(0, 2000);
+    }
+  };
+
+  window.addEventListener('error', function (ev) {
+    E.fatal('Error: ' + ev.message + '\n  at ' + (ev.filename || '?') + ':' + (ev.lineno || '?'));
+  });
+  window.addEventListener('unhandledrejection', function (ev) {
+    E.fatal('Promise rejection: ' + (ev.reason && ev.reason.message ? ev.reason.message : String(ev.reason)));
+  });
+
+  // RNG with seed for reproducible worlds (screenshots / testing)
+  let _s = (E.PARAMS.seed * 1013904223) >>> 0;
+  E.rand = function () {
+    _s ^= _s << 13; _s >>>= 0;
+    _s ^= _s >> 17;
+    _s ^= _s << 5; _s >>>= 0;
+    return _s / 4294967296;
+  };
+  E.randRange = function (a, b) { return a + (b - a) * E.rand(); };
+
+  E.clamp = function (x, a, b) { return x < a ? a : (x > b ? b : x); };
+  E.lerp = function (a, b, t) { return a + (b - a) * t; };
+  E.smooth = function (t) { t = E.clamp(t, 0, 1); return t * t * (3 - 2 * t); };
+  E.damp = function (a, b, k, dt) { return E.lerp(a, b, 1 - Math.exp(-k * dt)); };
+})(window.E = window.E || {});
+
+
+(function (E) {
+  // ============ EMBERFALL :: 01_math.js ============
+  // Column-major mat4 (WebGPU convention) + quaternions + vec3 helpers.
+  const M = E.M = {};
+
+  M.ident = function () {
+    const m = new Float32Array(16);
+    m[0] = m[5] = m[10] = m[15] = 1;
+    return m;
+  };
+
+  M.mul = function (a, b, out) {
+    out = out || new Float32Array(16);
+    for (let c = 0; c < 4; c++) {
+      const b0 = b[c * 4], b1 = b[c * 4 + 1], b2 = b[c * 4 + 2], b3 = b[c * 4 + 3];
+      out[c * 4] = a[0] * b0 + a[4] * b1 + a[8] * b2 + a[12] * b3;
+      out[c * 4 + 1] = a[1] * b0 + a[5] * b1 + a[9] * b2 + a[13] * b3;
+      out[c * 4 + 2] = a[2] * b0 + a[6] * b1 + a[10] * b2 + a[14] * b3;
+      out[c * 4 + 3] = a[3] * b0 + a[7] * b1 + a[11] * b2 + a[15] * b3;
+    }
+    return out;
+  };
+
+  M.persp = function (fovy, aspect, near, far) {
+    const f = 1 / Math.tan(fovy / 2), nf = 1 / (near - far);
+    const m = new Float32Array(16);
+    m[0] = f / aspect; m[5] = f;
+    m[10] = (far + near) * nf; m[11] = -1;
+    m[14] = 2 * far * near * nf;
+    return m;
+  };
+
+  M.ortho = function (l, r, b, t, n, f) {
+    const m = M.ident();
+    m[0] = 2 / (r - l); m[5] = 2 / (t - b); m[10] = 1 / (n - f);
+    m[12] = (l + r) / (l - r); m[13] = (t + b) / (b - t); m[14] = n / (n - f);
+    return m;
+  };
+
+  M.lookAt = function (eye, center, up) {
+    let zx = eye[0] - center[0], zy = eye[1] - center[1], zz = eye[2] - center[2];
+    let l = Math.hypot(zx, zy, zz) || 1; zx /= l; zy /= l; zz /= l;
+    let xx = up[1] * zz - up[2] * zy, xy = up[2] * zx - up[0] * zz, xz = up[0] * zy - up[1] * zx;
+    l = Math.hypot(xx, xy, xz) || 1; xx /= l; xy /= l; xz /= l;
+    const yx = zy * xz - zz * xy, yy = zz * xx - zx * xz, yz = zx * xy - zy * xx;
+    const m = M.ident();
+    m[0] = xx; m[1] = yx; m[2] = zx;
+    m[4] = xy; m[5] = yy; m[6] = zy;
+    m[8] = xz; m[9] = yz; m[10] = zz;
+    m[12] = -(xx * eye[0] + xy * eye[1] + xz * eye[2]);
+    m[13] = -(yx * eye[0] + yy * eye[1] + yz * eye[2]);
+    m[14] = -(zx * eye[0] + zy * eye[1] + zz * eye[2]);
+    return m;
+  };
+
+  M.invert = function (m, out) {
+    out = out || new Float32Array(16);
+    const a00 = m[0], a01 = m[1], a02 = m[2], a03 = m[3];
+    const a10 = m[4], a11 = m[5], a12 = m[6], a13 = m[7];
+    const a20 = m[8], a21 = m[9], a22 = m[10], a23 = m[11];
+    const a30 = m[12], a31 = m[13], a32 = m[14], a33 = m[15];
+    const b00 = a00 * a11 - a01 * a10, b01 = a00 * a12 - a02 * a10;
+    const b02 = a00 * a13 - a03 * a10, b03 = a01 * a12 - a02 * a11;
+    const b04 = a01 * a13 - a03 * a11, b05 = a02 * a13 - a03 * a12;
+    const b06 = a20 * a31 - a21 * a30, b07 = a20 * a32 - a22 * a30;
+    const b08 = a20 * a33 - a23 * a30, b09 = a21 * a32 - a22 * a31;
+    const b10 = a21 * a33 - a23 * a31, b11 = a22 * a33 - a23 * a32;
+    let det = b00 * b11 - b01 * b10 + b02 * b09 + b03 * b08 - b04 * b07 + b05 * b06;
+    if (!det) { out.set(M.ident()); return out; }
+    det = 1.0 / det;
+    out[0] = (a11 * b11 - a12 * b10 + a13 * b09) * det;
+    out[1] = (a02 * b10 - a01 * b11 - a03 * b09) * det;
+    out[2] = (a31 * b05 - a32 * b04 + a33 * b03) * det;
+    out[3] = (a22 * b04 - a21 * b05 - a23 * b03) * det;
+    out[4] = (a12 * b08 - a10 * b11 - a13 * b07) * det;
+    out[5] = (a00 * b11 - a02 * b08 + a03 * b07) * det;
+    out[6] = (a32 * b02 - a30 * b05 - a33 * b01) * det;
+    out[7] = (a20 * b05 - a22 * b02 + a23 * b01) * det;
+    out[8] = (a10 * b10 - a11 * b08 + a13 * b06) * det;
+    out[9] = (a01 * b08 - a00 * b10 - a03 * b06) * det;
+    out[10] = (a30 * b04 - a31 * b02 + a33 * b00) * det;
+    out[11] = (a21 * b02 - a20 * b04 - a23 * b00) * det;
+    out[12] = (a11 * b07 - a10 * b09 - a12 * b06) * det;
+    out[13] = (a00 * b09 - a01 * b07 + a02 * b06) * det;
+    out[14] = (a31 * b01 - a30 * b03 - a32 * b00) * det;
+    out[15] = (a20 * b03 - a21 * b01 + a22 * b00) * det;
+    return out;
+  };
+
+  M.translation = function (x, y, z) {
+    const m = M.ident();
+    m[12] = x; m[13] = y; m[14] = z;
+    return m;
+  };
+
+  // quat = [x,y,z,w]
+  const Q = M.Q = {};
+  Q.axisAngle = function (ax, ay, az, ang) {
+    const l = Math.hypot(ax, ay, az) || 1;
+    const s = Math.sin(ang / 2);
+    return [ax / l * s, ay / l * s, az / l * s, Math.cos(ang / 2)];
+  };
+  Q.mul = function (a, b) {
+    return [
+      a[3] * b[0] + a[0] * b[3] + a[1] * b[2] - a[2] * b[1],
+      a[3] * b[1] - a[0] * b[2] + a[1] * b[3] + a[2] * b[0],
+      a[3] * b[2] + a[0] * b[1] - a[1] * b[0] + a[2] * b[3],
+      a[3] * b[3] - a[0] * b[0] - a[1] * b[1] - a[2] * b[2]
+    ];
+  };
+  Q.slerp = function (a, b, t) {
+    let d = a[0] * b[0] + a[1] * b[1] + a[2] * b[2] + a[3] * b[3];
+    let bb = b;
+    if (d < 0) { d = -d; bb = [-b[0], -b[1], -b[2], -b[3]]; }
+    if (d > 0.9995) {
+      const r = [a[0] + (bb[0] - a[0]) * t, a[1] + (bb[1] - a[1]) * t, a[2] + (bb[2] - a[2]) * t, a[3] + (bb[3] - a[3]) * t];
+      const l = Math.hypot(r[0], r[1], r[2], r[3]) || 1;
+      return [r[0] / l, r[1] / l, r[2] / l, r[3] / l];
+    }
+    const th = Math.acos(E.clamp(d, -1, 1));
+    const sn = Math.sin(th);
+    const wa = Math.sin((1 - t) * th) / sn, wb = Math.sin(t * th) / sn;
+    return [a[0] * wa + bb[0] * wb, a[1] * wa + bb[1] * wb, a[2] * wa + bb[2] * wb, a[3] * wa + bb[3] * wb];
+  };
+  Q.toMat = function (q, out) {
+    out = out || new Float32Array(16);
+    const x = q[0], y = q[1], z = q[2], w = q[3];
+    const x2 = x + x, y2 = y + y, z2 = z + z;
+    const xx = x * x2, xy = x * y2, xz = x * z2, yy = y * y2, yz = y * z2, zz = z * z2;
+    const wx = w * x2, wy = w * y2, wz = w * z2;
+    out[0] = 1 - (yy + zz); out[1] = xy + wz; out[2] = xz - wy; out[3] = 0;
+    out[4] = xy - wz; out[5] = 1 - (xx + zz); out[6] = yz + wx; out[7] = 0;
+    out[8] = xz + wy; out[9] = yz - wx; out[10] = 1 - (xx + yy); out[11] = 0;
+    out[12] = 0; out[13] = 0; out[14] = 0; out[15] = 1;
+    return out;
+  };
+
+  M.compose = function (px, py, pz, q, sx, sy, sz, out) {
+    out = out || new Float32Array(16);
+    Q.toMat(q, out);
+    out[0] *= sx; out[1] *= sx; out[2] *= sx;
+    out[4] *= sy; out[5] *= sy; out[6] *= sy;
+    out[8] *= sz; out[9] *= sz; out[10] *= sz;
+    out[12] = px; out[13] = py; out[14] = pz;
+    return out;
+  };
+
+  M.tpoint = function (m, v) { // transform point
+    return [
+      m[0] * v[0] + m[4] * v[1] + m[8] * v[2] + m[12],
+      m[1] * v[0] + m[5] * v[1] + m[9] * v[2] + m[13],
+      m[2] * v[0] + m[6] * v[1] + m[10] * v[2] + m[14]
+    ];
+  };
+  M.tdir = function (m, v) { // transform direction (no translation)
+    return [
+      m[0] * v[0] + m[4] * v[1] + m[8] * v[2],
+      m[1] * v[0] + m[5] * v[1] + m[9] * v[2],
+      m[2] * v[0] + m[6] * v[1] + m[10] * v[2]
+    ];
+  };
+
+  // yaw-only forward/right on XZ plane; yaw=0 faces -Z
+  M.yawFwd = function (yaw) { return [Math.sin(yaw) * -1 * 0 + -Math.sin(yaw), -Math.cos(yaw)]; };
+  // simpler: forward = (-sin(yaw), -cos(yaw))? define: yaw rotates around Y, facing -Z at yaw 0.
+  M.fwdXZ = function (yaw) { return [-Math.sin(yaw), -Math.cos(yaw)]; };
+  M.rightXZ = function (yaw) { return [Math.cos(yaw), -Math.sin(yaw)]; };
+})(window.E = window.E || {});
+
+
+(function (E) {
+  // ============ EMBERFALL :: 02_wasmglue.js ============
+  // Loads the embedded WebAssembly terrain module; falls back to a JS twin.
+  const B64 = 'AGFzbQEAAAABDAJgAX8Bf2ACfX0BfQMGBQABAQEBBQMBAAEHNwYDbWVtAgAEaGFzaAAABm5vaXNlMgABBGZibTIAAgl0ZXJyYWluX2gAAwpncmFzc19tYXNrAAQKpAoFOgEBfyAAIABBEHZzIQEgAUGt6qz/B2whASABIAFBD3ZzIQEgAUGLzbKjeGwhASABIAFBEHZzIQEgAQv9AQICfwp9IACOIQQgBKghAiAAIASTIQQgAY4hBSAFqCEDIAEgBZMhBSAEIASUQwAAQEAgBEMAAABAlJOUIQYgBSAFlEMAAEBAIAVDAAAAQJSTlCEHIAJBsc/ZsgFsIANBr9bTvgJsahAAskMAAAAwlCEIIAJBAWpBsc/ZsgFsIANBr9bTvgJsahAAskMAAAAwlCEJIAJBsc/ZsgFsIANBAWpBr9bTvgJsahAAskMAAAAwlCEKIAJBAWpBsc/ZsgFsIANBAWpBr9bTvgJsahAAskMAAAAwlCELIAggCSAIkyAGlJIhDCAKIAsgCpMgBpSSIQ0gDCANIAyTIAeUkgufAgEDfUMAAAAAIQJDAACAPyEDQwAAgD8hBCACIAAgBJRDAAAAAJIgASAElEMAAAAAkhABIAOUkiECIANDAAAAP5QhAyAEQ4XrAUCUIQQgAiAAIASUQzMzW0GSIAEgBJRDhevpQJIQASADlJIhAiADQwAAAD+UIQMgBEOF6wFAlCEEIAIgACAElENmZkZAkiABIASUQ5qZnUGSEAEgA5SSIQIgA0MAAAA/lCEDIARDhesBQJQhBCACIAAgBJRDZmbaQZIgASAElENmZj5BkhABIAOUkiECIANDAAAAP5QhAyAEQ4XrAUCUIQQgAiAAIASUQ83MJEKSIAEgBJRDZma2QJIQASADlJIhAiADQwAAAD+UIQMgBEOF6wFAlCEEIAILpwIBA30gAEOmm0Q8lEOamelAkiABQ6abRDyUQ2ZmRkCSEAJDAADgQJQgAEPsUTg9lEOamdk/kiABQ+xROD2UQzMzE0GSEAJDMzOzP5SSIABDrkfhPZQgAUOuR+E9lBACQzMzsz6UkiECIAAgAJQgASABlJKRIQMgA0MAAGBBk0MAALBBlUMAAAAAl0MAAIA/liEEIAQgBJRDAABAQCAEQwAAAECUk5QhBCAEIQQgAkPNzMw9IARDZmZmP5SSlCECIAAgAJQgAUMAAHhCkiABQwAAeEKSlJKRIQMgA0MAAIBBk0MAAGBBlUMAAAAAl0MAAIA/liEEIAQgBJRDAABAQCAEQwAAAECUk5QhBCAEIQQgAiAElEMAAMBAQwAAgD8gBJOUkiECIAILnQMBBn0gACAAlCABIAGUkpEhAyADQwAAIEKTQwAAgEGVQwAAAACXQwAAgD+WIQUgBSAFlEMAAEBAIAVDAAAAQJSTlCEFIAUhBUMAAIA/IAWTIQIgAEOamRk+lEMzM1NAkiABQ5qZGT6UQ83MDEGSEAFDAAAAP5RDAAAAP5IhBENmZuY+IARDzcwMP5SSIAKUIQJDAADAQSABk0MAAMBAlUMAAAAAl0MAAIA/liABQwAAYEKSQwAAwECVQwAAAACXQwAAgD+WlCEFIACLQ83MDECVQwAAgD+WIQZDAACAPyAFQzMzcz+UQwAAgD8gBpOUkyAClCECIAAgAJQgAUMAAIBAkyABQwAAgECTlJKRIQYgAiAGQwAAkECTQwAAQECVQwAAAACXQwAAgD+WIQUgBSAFlEMAAEBAIAVDAAAAQJSTlCEFIAWUIQIgACAAlCABQwAAeEKSIAFDAAB4QpKUkpEhBiACIAZDAAAgQZNDAADAQJVDAAAAAJdDAACAP5YhBSAFIAWUQwAAQEAgBUMAAABAlJOUIQUgBZQhAiACCw==';
+
+  function b64ToBytes(b64) {
+    const bin = atob(b64);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return bytes;
+  }
+
+  // JS reference twins (mirror of the WASM logic)
+  function jsHash(x) {
+    x = x | 0;
+    x ^= x >>> 16; x = Math.imul(x, 0x7FEB352D) | 0;
+    x ^= x >>> 15; x = Math.imul(x, 0x846CA68B) | 0;
+    x ^= x >>> 16;
+    return x | 0;
+  }
+  function jsNoise2(x, y) {
+    const fx = Math.floor(x), fy = Math.floor(y);
+    const xf = x - fx, yf = y - fy;
+    const xi = fx, yi = fy;
+    const u = xf * xf * (3 - 2 * xf), v = yf * yf * (3 - 2 * yf);
+    const h = function (dx, dy) {
+      return jsHash((xi + dx) * 374761393 + (yi + dy) * 668265263) * 4.656612873077393e-10;
+    };
+    const m0 = h(0, 0) + (h(1, 0) - h(0, 0)) * u;
+    const m1 = h(0, 1) + (h(1, 1) - h(0, 1)) * u;
+    return m0 + (m1 - m0) * v;
+  }
+  function jsFbm2(x, y) {
+    let s = 0, a = 1, f = 1;
+    const O = [[0, 0], [13.7, 7.31], [3.1, 19.7], [27.3, 11.9], [41.2, 5.7]];
+    for (let i = 0; i < 5; i++) {
+      s += jsNoise2(x * f + O[i][0], y * f + O[i][1]) * a;
+      a *= 0.5; f *= 2.03;
+    }
+    return s;
+  }
+  function sstep(lo, hi, x) {
+    const t = E.clamp((x - lo) / (hi - lo), 0, 1);
+    return t * t * (3 - 2 * t);
+  }
+  function jsTerrainH(x, z) {
+    let h = jsFbm2(x * 0.012 + 7.3, z * 0.012 + 3.1) * 7.0 +
+            jsFbm2(x * 0.045 + 1.7, z * 0.045 + 9.2) * 1.4 +
+            jsFbm2(x * 0.11, z * 0.11) * 0.35;
+    const d = Math.hypot(x, z);
+    h *= 0.1 + 0.9 * sstep(14, 36, d);
+    const d2 = Math.hypot(x, z + 62);
+    const t2 = sstep(16, 30, d2);
+    return h * t2 + 6.0 * (1 - t2);
+  }
+  function jsGrassMask(x, z) {
+    const d = Math.hypot(x, z);
+    let m = 1.0 - sstep(40, 56, d);
+    const n = jsNoise2(x * 0.15 + 3.3, z * 0.15 + 8.8) * 0.5 + 0.5;
+    m *= 0.45 + 0.55 * n;
+    const g = E.clamp((24 - z) / 6, 0, 1) * E.clamp((z + 56) / 6, 0, 1);
+    const pf = Math.min(Math.abs(x) / 2.2, 1);
+    m *= 1 - g * 0.95 * (1 - pf);
+    m *= sstep(4.5, 7.5, Math.hypot(x, z - 4));
+    m *= sstep(10, 16, Math.hypot(x, z + 62));
+    return m;
+  }
+
+  E.loadWasm = async function () {
+    const W = E.WASM = { used: false };
+    try {
+      const bytes = b64ToBytes(B64);
+      const res = await WebAssembly.instantiate(bytes, {});
+      const ex = res.instance.exports;
+      W.used = true;
+      W.hash = ex.hash;
+      W.noise2 = ex.noise2;
+      W.fbm2 = ex.fbm2;
+      W.terrainH = ex.terrain_h;
+      W.grassMask = ex.grass_mask;
+      W.mem = ex.mem;
+      E.log('WASM module active (' + bytes.length + ' bytes, exports: ' + Object.keys(ex).join(', ') + ')');
+    } catch (err) {
+      E.log('WASM failed, using JS fallback: ' + err.message);
+      W.hash = jsHash; W.noise2 = jsNoise2; W.fbm2 = jsFbm2;
+      W.terrainH = jsTerrainH; W.grassMask = jsGrassMask;
+      W.mem = null;
+    }
+    return W;
+  };
+})(window.E = window.E || {});
+
+
+(function (E) {
+  // ============ EMBERFALL :: 03_shaders.js ============
+  // WGSL shader library (WebGPU).
+  const G_DECL = `
+struct Globals {
+  viewProj : mat4x4f,
+  lightVP : mat4x4f,
+  invVP : mat4x4f,
+  camRight : vec4f,
+  camUp : vec4f,
+  camPos : vec4f,
+  sunDir : vec4f,
+  fogColor : vec4f,
+  params : vec4f,
+  params2 : vec4f,
+  lights : array<vec4f, 12>,
+};
+@group(0) @binding(0) var<uniform> G : Globals;
+`;
+
+  const NOISE = `
+fn hash21(p : vec2f) -> f32 {
+  var q = fract(p * vec2f(123.34, 456.21));
+  q = q + dot(q, q + 45.32);
+  return fract(q.x * q.y);
+}
+fn vnoise(p : vec2f) -> f32 {
+  let i = floor(p);
+  let f = fract(p);
+  let u = f * f * (3.0 - 2.0 * f);
+  let a = hash21(i);
+  let b = hash21(i + vec2f(1.0, 0.0));
+  let c = hash21(i + vec2f(0.0, 1.0));
+  let d = hash21(i + vec2f(1.0, 1.0));
+  return mix(mix(a, b, u.x), mix(c, d, u.x), u.y);
+}
+fn fbm2(p0 : vec2f) -> f32 {
+  var p = p0;
+  var s = 0.0;
+  var a = 0.5;
+  for (var i = 0; i < 5; i++) {
+    s = s + vnoise(p) * a;
+    p = p * 2.03 + vec2f(17.3, 9.1);
+    a = a * 0.5;
+  }
+  return s;
+}
+`;
+
+  const SHADOW = `
+@group(1) @binding(0) var shadowTex : texture_depth_2d;
+@group(1) @binding(1) var shadowSmp : sampler_comparison;
+fn getShadow(wp : vec3f, ndl : f32) -> f32 {
+  let sp = G.lightVP * vec4f(wp, 1.0);
+  let ndc = sp.xyz / sp.w;
+  let uv = ndc.xy * vec2f(0.5, -0.5) + vec2f(0.5, 0.5);
+  if (uv.x < 0.002 || uv.x > 0.998 || uv.y < 0.002 || uv.y > 0.998 || ndc.z > 0.999) {
+    return 1.0;
+  }
+  let bias = mix(0.0042, 0.0012, clamp(ndl, 0.0, 1.0));
+  var s = 0.0;
+  let texel = 1.0 / ${(E.PARAMS.shdw || 2048)}.0;
+  for (var dy = -1; dy <= 1; dy++) {
+    for (var dx = -1; dx <= 1; dx++) {
+      s = s + textureSampleCompareLevel(shadowTex, shadowSmp,
+            uv + vec2f(f32(dx), f32(dy)) * texel, ndc.z - bias);
+    }
+  }
+  return s / 9.0;
+}
+`;
+
+  const POINT_LIGHTS = `
+for (var li = 0; li < 6; li++) {
+  let lp = G.lights[li * 2].xyz;
+  let rad = G.lights[li * 2].w;
+  let lc = G.lights[li * 2 + 1].rgb;
+  let inten = G.lights[li * 2 + 1].w;
+  let d = distance(lp, wp);
+  if (d < rad && inten > 0.001) {
+    let ldir = (lp - wp) / max(d, 0.001);
+    let att = inten * pow(max(1.0 - d / rad, 0.0), 2.0);
+    col = col + albedo * lc * max(dot(N, ldir), 0.0) * att;
+  }
+}
+`;
+
+  const FOG = `
+  let fogD = 1.0 - exp(-dist * G.fogColor.w * exp(-max(wp.y, 0.0) * 0.045));
+`;
+
+  const FS_TRI = `
+struct FSIn {
+  @builtin(position) pos : vec4f,
+  @location(0) uv : vec2f,
+};
+@vertex fn vsTri(@builtin(vertex_index) vi : u32) -> FSIn {
+  var o : FSIn;
+  let x = f32((vi << 1u) & 2u);
+  let y = f32(vi & 2u);
+  o.uv = vec2f(x, y);
+  o.pos = vec4f(x * 2.0 - 1.0, y * 2.0 - 1.0, 0.0, 1.0);
+  return o;
+}
+`;
+
+  // ---------------- SKY ----------------
+  E.SHADERS = {};
+  E.SHADERS.sky = G_DECL + NOISE + FS_TRI + `
+@fragment fn fsSky(in : FSIn) -> @location(0) vec4f {
+  let ndc = vec3f(in.uv.x * 2.0 - 1.0, in.uv.y * 2.0 - 1.0, 1.0);
+  let p4 = G.invVP * vec4f(ndc, 1.0);
+  let dir = normalize(p4.xyz / p4.w - G.camPos.xyz);
+  let moonDir = normalize(G.sunDir.xyz);
+  let horiz = pow(1.0 - clamp(dir.y, 0.0, 1.0), 2.5);
+  var col = mix(vec3f(0.010, 0.016, 0.040), vec3f(0.058, 0.088, 0.150), horiz);
+  col = mix(col, vec3f(0.014, 0.020, 0.032), smoothstep(0.0, -0.3, dir.y));
+  if (dir.y > 0.0) {
+    let su = dir.xz / (dir.y + 0.35);
+    let cell = floor(su * 30.0);
+    let f = fract(su * 30.0);
+    let h = hash21(cell);
+    if (h > 0.90) {
+      let star = smoothstep(0.22, 0.0, length(f - vec2f(0.5, 0.5)));
+      let tw = 0.55 + 0.45 * sin(G.params.x * (1.0 + h * 4.0) + h * 47.0);
+      col = col + vec3f(0.85, 0.92, 1.0) * star * tw * smoothstep(0.0, 0.2, dir.y) * (h - 0.90) * 9.0;
+    }
+  }
+  let md = dot(dir, moonDir);
+  let disc = smoothstep(0.99950, 0.99980, md);
+  col = col + vec3f(1.0, 0.975, 0.90) * disc * 3.4;
+  col = col + vec3f(0.44, 0.54, 0.86) * pow(max(md, 0.0), 320.0) * 1.5;
+  col = col + vec3f(0.10, 0.13, 0.24) * pow(max(md, 0.0), 22.0);
+  let cuv = dir.xz / (0.30 + max(dir.y, -0.1)) * 0.5 + vec2f(G.params.x * 0.006, G.params.x * 0.0015);
+  let cn = fbm2(cuv * 1.7);
+  let band = smoothstep(0.50, 0.80, cn) * exp(-max(dir.y, 0.0) * 3.0);
+  let cloudCol = vec3f(0.038, 0.050, 0.085) * (0.65 + 0.7 * cn) + vec3f(0.05, 0.06, 0.10) * pow(max(md, 0.0), 6.0) * 0.5;
+  col = mix(col, cloudCol, band * 0.9);
+  return vec4f(col, 1.0);
+}
+`;
+
+  // ---------------- TERRAIN ----------------
+  E.SHADERS.terrain = G_DECL + NOISE + SHADOW + `
+struct TOut {
+  @builtin(position) pos : vec4f,
+  @location(0) wp : vec3f,
+  @location(1) n : vec3f,
+  @location(2) ao : f32,
+};
+@vertex fn vsT(@location(0) p : vec3f, @location(1) nrm : vec3f, @location(2) ao : f32) -> TOut {
+  var o : TOut;
+  o.wp = p;
+  o.n = nrm;
+  o.ao = ao;
+  o.pos = G.viewProj * vec4f(p, 1.0);
+  return o;
+}
+@fragment fn fsT(in : TOut) -> @location(0) vec4f {
+  let wp = in.wp;
+  let V = normalize(G.camPos.xyz - wp);
+  let N = normalize(in.n);
+  let dist = distance(G.camPos.xyz, wp);
+  let n1 = fbm2(wp.xz * 0.35);
+  let n2 = vnoise(wp.xz * 1.9);
+  var albedo = mix(vec3f(0.040, 0.070, 0.034), vec3f(0.070, 0.100, 0.048), n1);
+  albedo = mix(albedo, vec3f(0.095, 0.085, 0.058), smoothstep(0.55, 0.9, n2) * 0.55);
+  let slope = 1.0 - N.y;
+  let rock = mix(vec3f(0.070, 0.068, 0.064), vec3f(0.095, 0.090, 0.086), n2);
+  albedo = mix(albedo, rock, smoothstep(0.22, 0.5, slope));
+  let pz = smoothstep(-58.0, -50.0, wp.z) * smoothstep(26.0, 18.0, wp.z);
+  let px = 1.0 - smoothstep(1.4, 3.2, abs(wp.x));
+  albedo = mix(albedo, vec3f(0.080, 0.068, 0.050), pz * px * 0.85);
+  let L = normalize(G.sunDir.xyz);
+  let ndl = max(dot(N, L), 0.0);
+  let sh = getShadow(wp + N * 0.06, ndl);
+  let moonCol = vec3f(0.60, 0.68, 0.95) * G.sunDir.w;
+  var col = albedo * moonCol * ndl * sh;
+  col = col + albedo * vec3f(0.040, 0.055, 0.090) * (0.55 + 0.45 * N.y);
+  let H = normalize(L + V);
+  col = col + moonCol * pow(max(dot(N, H), 0.0), 40.0) * 0.05 * sh;
+  let albedo2 = albedo;` + POINT_LIGHTS + `
+  col = col * in.ao;` + FOG + `
+  col = mix(col, G.fogColor.rgb * 1.15, fogD);
+  return vec4f(col, 1.0);
+}
+`;
+
+  // ---------------- GRASS ----------------
+  E.SHADERS.grass = G_DECL + SHADOW + `
+struct GOut {
+  @builtin(position) pos : vec4f,
+  @location(0) wp : vec3f,
+  @location(1) h : f32,
+  @location(2) n : vec3f,
+  @location(3) vary : vec2f,
+};
+@vertex fn vsG(@builtin(vertex_index) vi : u32,
+               @location(0) posd : vec4f,
+               @location(1) data : vec4f,
+               @location(2) colr : vec4f) -> GOut {
+  let base = posd.xyz;
+  let level = f32(vi >> 1u);
+  let side = f32(vi & 1u);
+  let t = level * 0.25;
+  let rotY = data.x;
+  let h = data.y;
+  let w = data.z;
+  let phase = data.w;
+  let wid = w * (1.0 - t * t * 0.9);
+  let time = G.params.x;
+  let gust = sin(time * 1.5 + base.x * 0.09 + base.z * 0.07 + phase) * 0.6
+           + sin(time * 2.9 + base.z * 0.15 + phase * 1.7) * 0.25
+           + sin(time * 0.31 + base.x * 0.013 + base.z * 0.009) * 0.55;
+  let windAmp = G.params.y * (0.35 + 0.65 * abs(gust));
+  let windDir = vec2f(0.822, 0.570);
+  let sway = gust * windAmp * t * t;
+  let lean = colr.z * t * t;
+  let lx = (side * 2.0 - 1.0) * wid;
+  let ly = t * h * (1.0 - 0.10 * t * t);
+  let cs = cos(rotY);
+  let sn = sin(rotY);
+  var wp = vec3f(base.x + lx * cs, base.y + ly, base.z - lx * sn);
+  wp.x = wp.x + windDir.x * sway + sin(rotY * 3.1 + phase) * lean * 0.4;
+  wp.z = wp.z + windDir.y * sway + cos(rotY * 2.3) * lean * 0.4;
+  var local = wp - base;
+  let dcam = distance(G.camPos.xz, base.xz);
+  let fade = 1.0 - smoothstep(G.params2.x * 0.72, G.params2.x, dcam);
+  local = local * fade;
+  wp = base + local;
+  var o : GOut;
+  o.pos = G.viewProj * vec4f(wp, 1.0);
+  o.wp = wp;
+  o.h = t;
+  o.n = normalize(vec3f(sn, 0.15, cs));
+  o.vary = vec2f(t, colr.x);
+  return o;
+}
+@fragment fn fsG(in : GOut) -> @location(0) vec4f {
+  let wp = in.wp;
+  let t = in.h;
+  var N = normalize(in.n);
+  let V = normalize(G.camPos.xyz - wp);
+  if (dot(N, V) < 0.0) { N = -N; }
+  let dist = distance(G.camPos.xyz, wp);
+  let hueVar = in.vary.y;
+  var albedo = mix(vec3f(0.026, 0.050, 0.020), vec3f(0.095, 0.130, 0.050), t * t);
+  albedo = mix(albedo, vec3f(0.155, 0.145, 0.048), hueVar * t * 0.65);
+  let L = normalize(G.sunDir.xyz);
+  let ndl = abs(dot(N, L)) * 0.72 + 0.28;
+  let sh = getShadow(wp + vec3f(0.0, 0.06, 0.0), 0.6);
+  let moonCol = vec3f(0.60, 0.68, 0.95) * G.sunDir.w;
+  var col = albedo * moonCol * ndl * sh;
+  col = col + albedo * vec3f(0.04, 0.055, 0.09) * 0.75;
+  let tr = pow(max(dot(V, L), 0.0), 3.0);
+  col = col + vec3f(0.10, 0.16, 0.13) * tr * t * t * sh * 0.55;
+  let H = normalize(L + V);
+  col = col + moonCol * pow(max(dot(N, H), 0.0), 26.0) * 0.05 * sh;
+  col = col * mix(0.26, 1.05, t * t + 0.12);` + FOG + `
+  col = mix(col, G.fogColor.rgb * 1.15, fogD);
+  return vec4f(col, 1.0);
+}
+`;
+
+  // ---------------- ACTORS / PROPS ----------------
+  E.SHADERS.actor = G_DECL + SHADOW + `
+struct Obj {
+  m : mat4x4f,
+  tint : vec4f,
+  matp : vec4f,
+};
+@group(2) @binding(0) var<uniform> O : Obj;
+struct AOut {
+  @builtin(position) pos : vec4f,
+  @location(0) wp : vec3f,
+  @location(1) n : vec3f,
+};
+@vertex fn vsA(@location(0) p : vec3f, @location(1) nrm : vec3f) -> AOut {
+  var wp3 = (O.m * vec4f(p, 1.0)).xyz;
+  if (O.matp.z > 0.5) {
+    let sway = sin(G.params.x * 3.7 + p.y * 5.0 + O.matp.w) * 0.05 * max(p.y + 0.3, 0.0);
+    wp3 = wp3 + vec3f(sway, 0.0, sway * 0.6);
+  }
+  var o : AOut;
+  o.wp = wp3;
+  o.n = normalize((O.m * vec4f(nrm, 0.0)).xyz);
+  o.pos = G.viewProj * vec4f(wp3, 1.0);
+  return o;
+}
+@fragment fn fsA(in : AOut) -> @location(0) vec4f {
+  let wp = in.wp;
+  var N = normalize(in.n);
+  let V = normalize(G.camPos.xyz - wp);
+  let dist = distance(G.camPos.xyz, wp);
+  let isCloth = O.matp.z > 0.5;
+  if (isCloth && dot(N, V) < 0.0) { N = -N; }
+  let albedo = O.tint.rgb;
+  let L = normalize(G.sunDir.xyz);
+  let ndl = max(dot(N, L), 0.0);
+  let sh = getShadow(wp + N * 0.05, ndl);
+  let moonCol = vec3f(0.60, 0.68, 0.95) * G.sunDir.w;
+  var col = albedo * moonCol * ndl * sh;
+  col = col + albedo * vec3f(0.055, 0.075, 0.115) * (0.5 + 0.5 * N.y);
+  let H = normalize(L + V);
+  let specP = mix(90.0, 10.0, O.matp.x);
+  let specI = mix(0.55, 0.10, O.matp.x) * (0.3 + 0.7 * O.matp.y);
+  col = col + moonCol * pow(max(dot(N, H), 0.0), specP) * specI * sh;
+  let fres = pow(1.0 - max(dot(N, V), 0.0), 4.0);
+  col = col + vec3f(0.30, 0.40, 0.65) * fres * 0.12;
+  let albedo2 = albedo;` + POINT_LIGHTS + `
+  col = col + O.tint.rgb * O.tint.a * (0.75 + 0.45 * sin(G.params.x * 2.2 + O.matp.w));` + FOG + `
+  col = mix(col, G.fogColor.rgb * 1.15, fogD * (1.0 - O.tint.a * 0.5));
+  return vec4f(col, 1.0);
+}
+`;
+
+  // ---------------- SHADOW (depth only) ----------------
+  E.SHADERS.shadowActor = G_DECL + `
+struct Obj {
+  m : mat4x4f,
+  tint : vec4f,
+  matp : vec4f,
+};
+@group(1) @binding(0) var<uniform> O : Obj;
+@vertex fn vsSh(@location(0) p : vec3f, @location(1) nrm : vec3f) -> @builtin(position) vec4f {
+  return G.lightVP * O.m * vec4f(p, 1.0);
+}
+`;
+
+  // ---------------- PARTICLES ----------------
+  E.SHADERS.particles = G_DECL + `
+struct POut {
+  @builtin(position) pos : vec4f,
+  @location(0) uv : vec2f,
+  @location(1) col : vec4f,
+};
+@vertex fn vsP(@builtin(vertex_index) vi : u32,
+               @location(0) pd : vec4f,
+               @location(1) col : vec4f,
+               @location(2) misc : vec2f) -> POut {
+  let corner = vec2f(f32(vi & 1u) * 2.0 - 1.0, f32(vi >> 1u) * 2.0 - 1.0);
+  let c = cos(misc.x);
+  let s = sin(misc.x);
+  let rc = vec2f(corner.x * c - corner.y * s, corner.x * s + corner.y * c);
+  let wp = pd.xyz + G.camRight.xyz * rc.x * pd.w + G.camUp.xyz * rc.y * pd.w;
+  var o : POut;
+  o.pos = G.viewProj * vec4f(wp, 1.0);
+  o.uv = corner;
+  o.col = vec4f(col.rgb, col.a * misc.y);
+  return o;
+}
+@fragment fn fsP(in : POut) -> @location(0) vec4f {
+  let d = length(in.uv);
+  let a = pow(max(1.0 - d, 0.0), 1.7) * in.col.a;
+  return vec4f(in.col.rgb * a, a);
+}
+`;
+
+  // ---------------- SWORD TRAIL ----------------
+  E.SHADERS.trail = G_DECL + `
+struct TLOut {
+  @builtin(position) pos : vec4f,
+  @location(0) a : f32,
+};
+@vertex fn vsTr(@location(0) p : vec3f, @location(1) alpha : f32) -> TLOut {
+  var o : TLOut;
+  o.pos = G.viewProj * vec4f(p, 1.0);
+  o.a = alpha;
+  return o;
+}
+@fragment fn fsTr(in : TLOut) -> @location(0) vec4f {
+  let c = vec3f(0.62, 0.78, 1.0);
+  return vec4f(c * in.a * 1.1, in.a);
+}
+`;
+
+  // ---------------- POST ----------------
+  const POST_V = G_DECL + FS_TRI;
+  E.SHADERS.postBright = `
+@group(0) @binding(0) var srcTex : texture_2d<f32>;
+@group(0) @binding(1) var smp : sampler;
+` + FS_TRI + `
+@fragment fn fsBright(in : FSIn) -> @location(0) vec4f {
+  let c = textureSampleLevel(srcTex, smp, in.uv, 0.0).rgb;
+  let l = dot(c, vec3f(0.2126, 0.7152, 0.0722));
+  let w = smoothstep(0.85, 1.45, l);
+  return vec4f(c * w, 1.0);
+}
+`;
+  E.SHADERS.postBlurH = `
+@group(0) @binding(0) var srcTex : texture_2d<f32>;
+@group(0) @binding(1) var smp : sampler;
+` + FS_TRI + `
+@fragment fn fsBlurH(in : FSIn) -> @location(0) vec4f {
+  let tx = 1.0 / 320.0;
+  var c = textureSampleLevel(srcTex, smp, in.uv, 0.0).rgb * 0.227;
+  c = c + textureSampleLevel(srcTex, smp, in.uv + vec2f(tx * 1.0, 0.0), 0.0).rgb * 0.194;
+  c = c + textureSampleLevel(srcTex, smp, in.uv - vec2f(tx * 1.0, 0.0), 0.0).rgb * 0.194;
+  c = c + textureSampleLevel(srcTex, smp, in.uv + vec2f(tx * 2.3, 0.0), 0.0).rgb * 0.121;
+  c = c + textureSampleLevel(srcTex, smp, in.uv - vec2f(tx * 2.3, 0.0), 0.0).rgb * 0.121;
+  c = c + textureSampleLevel(srcTex, smp, in.uv + vec2f(tx * 3.8, 0.0), 0.0).rgb * 0.054;
+  c = c + textureSampleLevel(srcTex, smp, in.uv - vec2f(tx * 3.8, 0.0), 0.0).rgb * 0.054;
+  c = c + textureSampleLevel(srcTex, smp, in.uv + vec2f(tx * 5.5, 0.0), 0.0).rgb * 0.016;
+  c = c + textureSampleLevel(srcTex, smp, in.uv - vec2f(tx * 5.5, 0.0), 0.0).rgb * 0.016;
+  return vec4f(c, 1.0);
+}
+`;
+  E.SHADERS.postBlurV = `
+@group(0) @binding(0) var srcTex : texture_2d<f32>;
+@group(0) @binding(1) var smp : sampler;
+` + FS_TRI + `
+@fragment fn fsBlurV(in : FSIn) -> @location(0) vec4f {
+  let ty = 1.0 / 180.0;
+  var c = textureSampleLevel(srcTex, smp, in.uv, 0.0).rgb * 0.227;
+  c = c + textureSampleLevel(srcTex, smp, in.uv + vec2f(0.0, ty * 1.0), 0.0).rgb * 0.194;
+  c = c + textureSampleLevel(srcTex, smp, in.uv - vec2f(0.0, ty * 1.0), 0.0).rgb * 0.194;
+  c = c + textureSampleLevel(srcTex, smp, in.uv + vec2f(0.0, ty * 2.3), 0.0).rgb * 0.121;
+  c = c + textureSampleLevel(srcTex, smp, in.uv - vec2f(0.0, ty * 2.3), 0.0).rgb * 0.121;
+  c = c + textureSampleLevel(srcTex, smp, in.uv + vec2f(0.0, ty * 3.8), 0.0).rgb * 0.054;
+  c = c + textureSampleLevel(srcTex, smp, in.uv - vec2f(0.0, ty * 3.8), 0.0).rgb * 0.054;
+  c = c + textureSampleLevel(srcTex, smp, in.uv + vec2f(0.0, ty * 5.5), 0.0).rgb * 0.016;
+  c = c + textureSampleLevel(srcTex, smp, in.uv - vec2f(0.0, ty * 5.5), 0.0).rgb * 0.016;
+  return vec4f(c, 1.0);
+}
+`;
+  E.SHADERS.postComposite = `
+@group(1) @binding(0) var srcTex : texture_2d<f32>;
+@group(1) @binding(1) var bloomTex : texture_2d<f32>;
+@group(1) @binding(2) var smp : sampler;
+` + FS_TRI + `
+@fragment fn fsComp(in : FSIn) -> @location(0) vec4f {
+  let uv = in.uv;
+  let d2 = dot(uv - vec2f(0.5, 0.5), uv - vec2f(0.5, 0.5));
+  let ca = d2 * 0.010;
+  var col = vec3f(
+    textureSampleLevel(srcTex, smp, uv + vec2f(ca, 0.0), 0.0).r,
+    textureSampleLevel(srcTex, smp, uv, 0.0).g,
+    textureSampleLevel(srcTex, smp, uv - vec2f(ca, 0.0), 0.0).b);
+  let bloom = textureSampleLevel(bloomTex, smp, uv, 0.0).rgb;
+  col = col + bloom * select(0.85, 0.0, G.params2.w > 0.5);
+  let nost = G.params2.y;
+  if (nost > 0.01) {
+    let grey = dot(col, vec3f(0.299, 0.587, 0.114));
+    col = mix(col, grey * vec3f(1.06, 0.97, 0.84), nost * 0.45);
+    let scan = sin(uv.y * 800.0) * 0.5 + 0.5;
+    col = col * (1.0 - nost * 0.07 * scan);
+  }
+  col = col * G.params.z;
+  col = clamp((col * (2.51 * col + vec3f(0.03))) / (col * (2.43 * col + vec3f(0.59)) + vec3f(0.14)), vec3f(0.0), vec3f(1.0));
+  let vig = 1.0 - 0.42 * smoothstep(0.32, 0.95, length((uv - vec2f(0.5, 0.5)) * vec2f(1.55, 1.05)));
+  col = col * vig;
+  let g = fract(sin(dot(uv * vec2f(1619.3, 873.7) + vec2f(G.params.x * 7.7), vec2f(12.9898, 78.233))) * 43758.5453);
+  col = col + vec3f(g - 0.5) * G.params.w;
+  if (G.params2.z > 1.5) { return vec4f(0.2, 0.5, 0.9, 1.0); }
+  col = pow(max(col, vec3f(0.0)), vec3f(1.0 / 2.2));
+  return vec4f(col, 1.0);
+}
+`;
+  E.SHADERS.postComposite = G_DECL + E.SHADERS.postComposite;
+})(window.E = window.E || {});
+
+
+(function (E) {
+  // ============ EMBERFALL :: 04_engine.js ============
+  // Geometry builders + WebGPU renderer (shadow pass, HDR MSAA main pass, bloom + post).
+  const M = E.M;
+
+  // ---------- geometry ----------
+  const GEO = E.GEO = {};
+  function finalize(g, hardEdges) {
+    const p = g.p, idx = g.i;
+    const n = new Float32Array(p.length);
+    for (let t = 0; t < idx.length; t += 3) {
+      const a = idx[t] * 3, b = idx[t + 1] * 3, c = idx[t + 2] * 3;
+      const ax = p[a], ay = p[a + 1], az = p[a + 2];
+      const e1x = p[b] - ax, e1y = p[b + 1] - ay, e1z = p[b + 2] - az;
+      const e2x = p[c] - ax, e2y = p[c + 1] - ay, e2z = p[c + 2] - az;
+      const nx = e1y * e2z - e1z * e2y, ny = e1z * e2x - e1x * e2z, nz = e1x * e2y - e1y * e2x;
+      if (hardEdges) {
+        n[a] = n[b] = n[c] = nx; n[a + 1] = n[b + 1] = n[c + 1] = ny; n[a + 2] = n[b + 2] = n[c + 2] = nz;
+      } else {
+        n[a] += nx; n[a + 1] += ny; n[a + 2] += nz;
+        n[b] += nx; n[b + 1] += ny; n[b + 2] += nz;
+        n[c] += nx; n[c + 1] += ny; n[c + 2] += nz;
+      }
+    }
+    if (!hardEdges) {
+      for (let v = 0; v < n.length; v += 3) {
+        const l = Math.hypot(n[v], n[v + 1], n[v + 2]) || 1;
+        n[v] /= l; n[v + 1] /= l; n[v + 2] /= l;
+      }
+    }
+    return { pos: new Float32Array(p), nrm: n, idx: idx };
+  }
+  GEO.box = function (w, h, d, taper) {
+    // taper: top scale factor (0..1)
+    const x = w / 2, z = d / 2, y0 = -h / 2, y1 = h / 2;
+    const tw = (taper !== undefined ? taper : 1);
+    const tx = x * tw, tz = z * tw;
+    const P = [], I = [];
+    function quad(a, b, c, d2) {
+      const s = P.length / 3;
+      P.push.apply(P, a); P.push.apply(P, b); P.push.apply(P, c); P.push.apply(P, d2);
+      I.push(s, s + 2, s + 1, s, s + 3, s + 2);
+    }
+    quad([-tx, y1, -tz], [tx, y1, -tz], [tx, y1, tz], [-tx, y1, tz]);
+    quad([-x, y0, -z], [-x, y0, z], [x, y0, z], [x, y0, -z]);
+    quad([-x, y0, -z], [x, y0, -z], [tx, y1, -tz], [-tx, y1, -tz]);
+    quad([x, y0, -z], [x, y0, z], [tx, y1, tz], [tx, y1, -tz]);
+    quad([x, y0, z], [-x, y0, z], [-tx, y1, tz], [tx, y1, tz]);
+    quad([-x, y0, z], [-x, y0, -z], [-tx, y1, -tz], [-tx, y1, tz]);
+    return finalize({ p: P, i: I }, true);
+  };
+  GEO.sphere = function (r, seg, rings, sy) {
+    const P = [], I = [];
+    for (let y = 0; y <= rings; y++) {
+      const v = y / rings, phi = v * Math.PI;
+      for (let x = 0; x <= seg; x++) {
+        const u = x / seg, th = u * Math.PI * 2;
+        P.push(Math.sin(phi) * Math.cos(th) * r, Math.cos(phi) * r * (sy || 1), Math.sin(phi) * Math.sin(th) * r);
+      }
+    }
+    for (let y = 0; y < rings; y++) for (let x = 0; x < seg; x++) {
+      const a = y * (seg + 1) + x, b = a + seg + 1;
+      I.push(a, a + 1, b, a + 1, b + 1, b);
+    }
+    return finalize({ p: P, i: I }, false);
+  };
+  GEO.cylinder = function (r0, r1, h, seg, caps) {
+    const P = [], I = [];
+    const y0 = -h / 2, y1 = h / 2;
+    for (let i = 0; i <= seg; i++) {
+      const a = i / seg * Math.PI * 2, c = Math.cos(a), s = Math.sin(a);
+      P.push(c * r0, y0, s * r0);
+      P.push(c * r1, y1, s * r1);
+    }
+    for (let i = 0; i < seg; i++) {
+      const a = i * 2;
+      I.push(a, a + 2, a + 1, a + 1, a + 2, a + 3);
+    }
+    if (caps) {
+      if (r0 > 0.001) {
+        const c0 = P.length / 3; P.push(0, y0, 0);
+        for (let i = 0; i <= seg; i++) { const a = i / seg * Math.PI * 2; P.push(Math.cos(a) * r0, y0, Math.sin(a) * r0); }
+        for (let i = 0; i < seg; i++) I.push(c0, c0 + 1 + ((i + 1) % seg), c0 + 1 + i);
+      }
+      if (r1 > 0.001) {
+        const c1 = P.length / 3; P.push(0, y1, 0);
+        for (let i = 0; i <= seg; i++) { const a = i / seg * Math.PI * 2; P.push(Math.cos(a) * r1, y1, Math.sin(a) * r1); }
+        for (let i = 0; i < seg; i++) I.push(c1, c1 + 1 + i, c1 + 1 + ((i + 1) % seg));
+      }
+    }
+    return finalize({ p: P, i: I }, false);
+  };
+  GEO.lathe = function (pts, seg) {
+    // pts: [[r,y], ...] bottom->top
+    const P = [], I = [];
+    for (let i = 0; i <= seg; i++) {
+      const a = i / seg * Math.PI * 2, c = Math.cos(a), s = Math.sin(a);
+      for (let j = 0; j < pts.length; j++) P.push(c * pts[j][0], pts[j][1], s * pts[j][0]);
+    }
+    const nl = pts.length;
+    for (let i = 0; i < seg; i++) for (let j = 0; j < nl - 1; j++) {
+      const a = i * nl + j, b = (i + 1) * nl + j;
+      I.push(a, a + 1, b, a + 1, b + 1, b);
+    }
+    return finalize({ p: P, i: I }, false);
+  };
+  GEO.octa = function (r, ry) {
+    const P = [], I = [];
+    const v = [[0, ry, 0], [r, 0, 0], [0, 0, r], [-r, 0, 0], [0, 0, -r], [0, -ry, 0]];
+    const F = [[0, 1, 2], [0, 2, 3], [0, 3, 4], [0, 4, 1], [5, 2, 1], [5, 3, 2], [5, 4, 3], [5, 1, 4]];
+    for (const f of F) for (const vi of f) P.push.apply(P, v[vi]);
+    for (let i = 0; i < 8; i++) I.push(i * 3, i * 3 + 2, i * 3 + 1);
+    return finalize({ p: P, i: I }, true);
+  };
+  GEO.merge = function (parts) {
+    // parts: [{geo, t:[x,y,z], q: quat|null, s:[sx,sy,sz]}]
+    const P = [], I = [];
+    const rot = new Float32Array(16);
+    for (const part of parts) {
+      const g = part.geo;
+      const base = P.length / 3;
+      const q = part.q || [0, 0, 0, 1];
+      M.Q.toMat(q, rot);
+      const s = part.s || [1, 1, 1];
+      for (let v = 0; v < g.pos.length; v += 3) {
+        let x = g.pos[v], y = g.pos[v + 1], z = g.pos[v + 2];
+        const rx = rot[0] * x + rot[4] * y + rot[8] * z;
+        const ry = rot[1] * x + rot[5] * y + rot[9] * z;
+        const rz = rot[2] * x + rot[6] * y + rot[10] * z;
+        P.push(rx * s[0] + (part.t ? part.t[0] : 0), ry * s[1] + (part.t ? part.t[1] : 0), rz * s[2] + (part.t ? part.t[2] : 0));
+      }
+      for (let i = 0; i < g.idx.length; i++) I.push(g.idx[i] + base);
+    }
+    return finalize({ p: P, i: I }, false);
+  };
+  GEO.quad = function (w, h) {
+    const P = [-w / 2, 0, 0, w / 2, 0, 0, w / 2, h, 0, -w / 2, h, 0];
+    return finalize({ p: P, i: [0, 1, 2, 0, 2, 3] }, true);
+  };
+
+  // ---------- renderer ----------
+  E.createRenderer = async function (canvas) {
+    if (!navigator.gpu) throw new Error('WebGPU is not available in this browser. Emberfall requires WebGPU (Chrome 113+, Edge 113+, or Safari 18+).');
+    const adapter = await navigator.gpu.requestAdapter({ powerPreference: 'high-performance' });
+    if (!adapter) throw new Error('No WebGPU adapter found (GPU drivers/blocklisted hardware).');
+    const device = await adapter.requestDevice({ label: 'emberfall-device' });
+    // Chromium headless GC bug: hold strong refs or the WebGPU instance gets collected
+    // ("A valid external Instance reference no longer exists" / device lost: destroyed)
+    window.__gpuRefs = window.__gpuRefs || {};
+    window.__gpuRefs.gpu = navigator.gpu;
+    window.__gpuRefs.adapter = adapter;
+    window.__gpuRefs.device = device;
+    device.addEventListener('uncapturederror', function (ev) {
+      E.fatal('WebGPU error: ' + ev.error.message);
+    });
+    device.lost.then(function (info) {
+      E.fatal('GPU device lost at t=' + (performance.now() / 1000).toFixed(1) + 's (last heartbeat ' + (E._t / 1000).toFixed(1) + 's): ' + info.reason + (info.message ? ' | ' + info.message : ''));
+    });
+    const format = navigator.gpu.getPreferredCanvasFormat();
+    // BLIT mode: present via CPU readback into a 2D canvas (used in headless test rigs
+    // where WebGPU swapchain presentation is broken). Rendering is still 100% WebGPU.
+    const BLIT = !!E.PARAMS.blit;
+    let ctx = null, out2d = null, outCanvas = null;
+    if (BLIT) {
+      canvas.style.display = 'none';
+      outCanvas = document.createElement('canvas');
+      outCanvas.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;display:block;z-index:0;background:#000';
+      document.body.appendChild(outCanvas);
+      out2d = outCanvas.getContext('2d');
+      window.__blitCanvas = outCanvas;
+    } else {
+      ctx = canvas.getContext('webgpu');
+    }
+    E.log('GPU adapter: ' + ((adapter.info && (adapter.info.vendor || adapter.info.description)) || 'webgpu') + ' | format: ' + format + (BLIT ? ' | blit-present' : ''));
+
+    const limits = device.limits;
+    const ALIGN = limits.minUniformBufferOffsetAlignment || 256;
+    const MAX_OBJECTS = 512;
+    const OBJ_STRIDE = ALIGN; // bytes per object slot
+
+    const globalsUB = device.createBuffer({ size: 512, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
+    const objUB = device.createBuffer({ size: OBJ_STRIDE * MAX_OBJECTS, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
+    const staging = new Float32Array(OBJ_STRIDE / 4 * MAX_OBJECTS);
+
+    // pipelines
+    function makeShader(code, label) {
+      const mod = device.createShaderModule({ code: code, label: label });
+      return mod;
+    }
+    async function checkModule(mod) {
+      const info = await mod.getCompilationInfo();
+      for (const msg of info.messages) {
+        if (msg.type === 'error') throw new Error('WGSL [' + mod.label + '] line ' + msg.lineNum + ': ' + msg.message);
+        else if (msg.type === 'warning') E.log('WGSL warn [' + mod.label + '] line ' + msg.lineNum + ': ' + msg.message);
+      }
+    }
+    const mods = {};
+    for (const k of Object.keys(E.SHADERS)) {
+      mods[k] = makeShader(E.SHADERS[k], k);
+      if (!E.PARAMS.noinfo) await checkModule(mods[k]);
+    }
+    E.log('All ' + Object.keys(mods).length + ' shader modules compiled clean');
+
+    const blendAdd = {
+      color: { srcFactor: 'one', dstFactor: 'one', operation: 'add' },
+      alpha: { srcFactor: 'one', dstFactor: 'one', operation: 'add' }
+    };
+    const depthOn = { format: 'depth24plus', depthWriteEnabled: true, depthCompare: 'less' };
+    const depthRead = { format: 'depth24plus', depthWriteEnabled: false, depthCompare: 'less' };
+    const depthAll = { format: 'depth24plus', depthWriteEnabled: false, depthCompare: 'always' };
+    const NOMSAA = E.PARAMS.nomsaa === '1';
+    const S4 = NOMSAA ? { samples: 1 } : { samples: 4 }; // MSAA main-pass pipelines
+
+    function pipe(label, mod, entry_v, entry_f, layoutDesc, opts) {
+      const desc = {
+        label: label,
+        layout: device.createPipelineLayout({ bindGroupLayouts: layoutDesc }),
+        vertex: { module: mod, entryPoint: entry_v, buffers: opts.buffers || [] },
+        primitive: { topology: opts.topo || 'triangle-list', cullMode: opts.cull || 'none' },
+        multisample: { count: opts.samples || 1 },
+      };
+      if (entry_f) desc.fragment = { module: mod, entryPoint: entry_f, targets: [{ format: opts.fmt || (window.__HDR8 ? 'rgba8unorm' : 'rgba16float'), blend: opts.blend }] };
+      desc.depthStencil = (E.PARAMS.nodepth && opts.depth && opts.samples) ? undefined : opts.depth;
+      if (E.PARAMS.debug) E.log('pipe ' + label + ' samples=' + desc.sampleCount + ' depth=' + (desc.depthStencil ? 'yes' : 'no'));
+      return device.createRenderPipeline(desc);
+    }
+
+    const BGL_globals = device.createBindGroupLayout({
+      entries: [{ binding: 0, visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT, buffer: { type: 'uniform' } }]
+    });
+    const BGL_shadow = device.createBindGroupLayout({
+      entries: [
+        { binding: 0, visibility: GPUShaderStage.FRAGMENT, texture: { sampleType: 'depth' } },
+        { binding: 1, visibility: GPUShaderStage.FRAGMENT, sampler: { type: 'comparison' } }
+      ]
+    });
+    const BGL_object = device.createBindGroupLayout({
+      entries: [{ binding: 0, visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT, buffer: { type: 'uniform', hasDynamicOffset: true, minBindingSize: 96 } }]
+    });
+    const BGL_post1 = device.createBindGroupLayout({
+      entries: [
+        { binding: 0, visibility: GPUShaderStage.FRAGMENT, texture: { sampleType: 'float' } },
+        { binding: 1, visibility: GPUShaderStage.FRAGMENT, sampler: { type: 'filtering' } }
+      ]
+    });
+    const BGL_post2 = device.createBindGroupLayout({
+      entries: [
+        { binding: 0, visibility: GPUShaderStage.FRAGMENT, texture: { sampleType: 'float' } },
+        { binding: 1, visibility: GPUShaderStage.FRAGMENT, texture: { sampleType: 'float' } },
+        { binding: 2, visibility: GPUShaderStage.FRAGMENT, sampler: { type: 'filtering' } }
+      ]
+    });
+
+    const meshBufLayout = [{ arrayStride: 24, attributes: [
+      { shaderLocation: 0, offset: 0, format: 'float32x3' },
+      { shaderLocation: 1, offset: 12, format: 'float32x3' }] }];
+    const terrainBufLayout = [{ arrayStride: 28, attributes: [
+      { shaderLocation: 0, offset: 0, format: 'float32x3' },
+      { shaderLocation: 1, offset: 12, format: 'float32x3' },
+      { shaderLocation: 2, offset: 24, format: 'float32' }] }];
+    const grassInstLayout = [
+      { arrayStride: 24, stepMode: 'vertex', attributes: [] }, // placeholder removed below
+    ];
+    const grassLayout = [
+      { arrayStride: 48, stepMode: 'instance', attributes: [
+        { shaderLocation: 0, offset: 0, format: 'float32x4' },
+        { shaderLocation: 1, offset: 16, format: 'float32x4' },
+        { shaderLocation: 2, offset: 32, format: 'float32x4' }] }];
+    const particleInstLayout = [
+      { arrayStride: 40, stepMode: 'instance', attributes: [
+        { shaderLocation: 0, offset: 0, format: 'float32x4' },
+        { shaderLocation: 1, offset: 16, format: 'float32x4' },
+        { shaderLocation: 2, offset: 32, format: 'float32x2' }] }];
+    const trailLayout = [{ arrayStride: 16, attributes: [
+      { shaderLocation: 0, offset: 0, format: 'float32x3' },
+      { shaderLocation: 1, offset: 12, format: 'float32' }] }];
+
+    const P = {};
+    device.pushErrorScope('validation');
+    P.sky = pipe('sky', mods.sky, 'vsTri', 'fsSky', [BGL_globals], Object.assign({ depth: depthAll }, S4));
+    P.terrain = pipe('terrain', mods.terrain, 'vsT', 'fsT', [BGL_globals, BGL_shadow], Object.assign({ buffers: terrainBufLayout, depth: depthOn }, S4));
+    P.grass = pipe('grass', mods.grass, 'vsG', 'fsG', [BGL_globals, BGL_shadow], Object.assign({ buffers: grassLayout, topo: 'triangle-strip', depth: depthOn }, S4));
+    P.actor = pipe('actor', mods.actor, 'vsA', 'fsA', [BGL_globals, BGL_shadow, BGL_object], Object.assign({ buffers: meshBufLayout, depth: depthOn }, S4));
+    P.shadowActor = pipe('shadowActor', mods.shadowActor, 'vsSh', null, [BGL_globals, BGL_object], { buffers: meshBufLayout, depth: depthOn, fmt: 'depth24plus' });
+    P.particles = pipe('particles', mods.particles, 'vsP', 'fsP', [BGL_globals], Object.assign({ buffers: particleInstLayout, topo: 'triangle-strip', depth: depthRead, blend: blendAdd }, S4));
+    P.trail = pipe('trail', mods.trail, 'vsTr', 'fsTr', [BGL_globals], Object.assign({ buffers: trailLayout, topo: 'triangle-strip', depth: depthRead, blend: blendAdd }, S4));
+    P.bright = pipe('bright', mods.postBright, 'vsTri', 'fsBright', [BGL_post1], {});
+    P.blurH = pipe('blurH', mods.postBlurH, 'vsTri', 'fsBlurH', [BGL_post1], {});
+    P.blurV = pipe('blurV', mods.postBlurV, 'vsTri', 'fsBlurV', [BGL_post1], {});
+    device.popErrorScope().then(function (err) {
+      if (err) E.fatal('PIPELINE CREATION ERROR: ' + err.message);
+      else E.log('all pipelines validated');
+    }).catch(function () {});
+    P.composite = pipe('composite', mods.postComposite, 'vsTri', 'fsComp', [BGL_globals, BGL_post2], { fmt: format });
+    if (E.PARAMS.blit) {
+      // composite writes into our own rgba8unorm present texture in blit mode
+      P.composite = pipe('compositeBlit', mods.postComposite, 'vsTri', 'fsComp', [BGL_globals, BGL_post2], { fmt: 'rgba8unorm' });
+    }
+    E.log('Render pipelines created');
+    E._t = performance.now();
+    setInterval(function () { E._t = performance.now(); }, 250); // heartbeat marks last-known-alive time
+
+    const cmpSmp = device.createSampler({ compare: 'less' });
+    const linSmp = device.createSampler({ magFilter: 'linear', minFilter: 'linear' });
+    const SHDW = E.PARAMS.shdw || 2048;
+    const shadowTex = device.createTexture({ size: [SHDW, SHDW], format: 'depth24plus', usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING });
+    const shadowView = shadowTex.createView();
+    const bgShadow = device.createBindGroup({ layout: BGL_shadow, entries: [{ binding: 0, resource: shadowView }, { binding: 1, resource: cmpSmp }] });
+    const bgGlobals = device.createBindGroup({ layout: BGL_globals, entries: [{ binding: 0, resource: { buffer: globalsUB } }] });
+    const bgObject = device.createBindGroup({ layout: BGL_object, entries: [{ binding: 0, resource: { buffer: objUB, offset: 0, size: 96 } }] });
+
+    // particle + trail buffers
+    const MAXP = 4096;
+    const particleVBuf = device.createBuffer({ size: MAXP * 40, usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST });
+    const trailVBuf = device.createBuffer({ size: 256 * 16, usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST });
+
+    // bloom targets
+    const bloomA = device.createTexture({ size: [320, 180], format: window.__HDR8 ? 'rgba8unorm' : 'rgba16float', usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING });
+    const bloomB = device.createTexture({ size: [320, 180], format: window.__HDR8 ? 'rgba8unorm' : 'rgba16float', usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING });
+    const bloomAView = bloomA.createView(), bloomBView = bloomB.createView();
+    const bgBright = device.createBindGroup({ layout: BGL_post1, entries: [{ binding: 0, resource: bloomAView }, { binding: 1, resource: linSmp }] });
+
+    let msaaColor = null, msaaDepth = null, resolveTex = null, canvasW = 0, canvasH = 0;
+    let bgBrightView = null, bgBlurH = null, bgBlurV = null, bgComposite = null;
+    // blit-present state
+    let presentTex = null, readA = null, readB = null, readFlip = false, blitBusy = false;
+    let blitCount = 0;
+    const imgDataCache = { d: null, w: 0, h: 0 };
+
+    function resize() {
+      const dpr = Math.min(window.devicePixelRatio || 1, BLIT ? 1 : 1.75);
+      let w, h;
+      const rm = E.PARAMS.res.match(/^(\d+)x(\d+)$/);
+      if (BLIT && rm) { w = parseInt(rm[1], 10); h = parseInt(rm[2], 10); }
+      else if (BLIT) { w = Math.max(320, window.innerWidth); h = Math.max(240, window.innerHeight); }
+      else { w = Math.max(320, Math.floor(canvas.clientWidth * dpr)); h = Math.max(240, Math.floor(canvas.clientHeight * dpr)); }
+      if (w === canvasW && h === canvasH) return;
+      canvasW = w; canvasH = h;
+      if (BLIT) {
+        outCanvas.width = w; outCanvas.height = h;
+        if (presentTex) presentTex.destroy();
+        presentTex = device.createTexture({ size: [w, h], format: 'rgba8unorm', usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.COPY_SRC });
+        if (readA) { try { readA.unmap(); } catch (e) {} readA.destroy(); }
+        if (readB) { try { readB.unmap(); } catch (e) {} readB.destroy(); }
+        readA = device.createBuffer({ size: Math.ceil(w * 4 / 256) * 256 * h, usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ });
+        readB = device.createBuffer({ size: Math.ceil(w * 4 / 256) * 256 * h, usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ });
+      } else {
+        canvas.width = w; canvas.height = h;
+        ctx.configure({ device: device, format: format, alphaMode: 'opaque' });
+      }
+      if (msaaColor) { msaaColor.destroy(); msaaDepth.destroy(); resolveTex.destroy(); }
+      msaaColor = NOMSAA ? null : device.createTexture({ size: [w, h], format: window.__HDR8 ? 'rgba8unorm' : 'rgba16float', sampleCount: 4, usage: GPUTextureUsage.RENDER_ATTACHMENT });
+      msaaDepth = device.createTexture({ size: [w, h], format: 'depth24plus', sampleCount: NOMSAA ? 1 : 4, usage: GPUTextureUsage.RENDER_ATTACHMENT });
+      resolveTex = device.createTexture({ size: [w, h], format: window.__HDR8 ? 'rgba8unorm' : 'rgba16float', usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING });
+      const rv = resolveTex.createView();
+      bgBrightView = device.createBindGroup({ layout: BGL_post1, entries: [{ binding: 0, resource: rv }, { binding: 1, resource: linSmp }] });
+      bgBlurH = device.createBindGroup({ layout: BGL_post1, entries: [{ binding: 0, resource: bloomAView }, { binding: 1, resource: linSmp }] });
+      bgBlurV = device.createBindGroup({ layout: BGL_post1, entries: [{ binding: 0, resource: bloomBView }, { binding: 1, resource: linSmp }] });
+      bgComposite = device.createBindGroup({ layout: BGL_post2, entries: [{ binding: 0, resource: rv }, { binding: 1, resource: bloomAView }, { binding: 2, resource: linSmp }] });
+    }
+    resize();
+    window.addEventListener('resize', resize);
+
+    const globalsData = new Float32Array(128);
+    function writeGlobals(cam, env) {
+      globalsData.set(cam.viewProj, 0);
+      globalsData.set(cam.lightVP, 16);
+      globalsData.set(cam.invVP, 32);
+      globalsData.set([cam.right[0], cam.right[1], cam.right[2], 0], 48);
+      globalsData.set([cam.up[0], cam.up[1], cam.up[2], 0], 52);
+      globalsData.set([cam.eye[0], cam.eye[1], cam.eye[2], 0], 56);
+      globalsData.set([env.sunDir[0], env.sunDir[1], env.sunDir[2], env.moonI], 60);
+      globalsData.set([env.fog[0], env.fog[1], env.fog[2], env.fogDensity], 64);
+      globalsData.set([env.time, env.wind, env.exposure, env.grain], 68);
+      globalsData.set([env.grassDist, env.nostalgia, env.dbg || 0, env.noBloom ? 1 : 0], 72);
+      for (let i = 0; i < 6; i++) {
+        const L = env.lights[i] || { pos: [0, -50, 0], radius: 0.001, color: [0, 0, 0], intensity: 0 };
+        globalsData.set([L.pos[0], L.pos[1], L.pos[2], L.radius], 76 + i * 8);
+        globalsData.set([L.color[0], L.color[1], L.color[2], L.intensity], 80 + i * 8);
+      }
+      device.queue.writeBuffer(globalsUB, 0, globalsData);
+    }
+
+    // mesh cache
+    const meshCache = new Map();
+    function uploadMesh(g) {
+      const vbuf = device.createBuffer({ size: (g.pos.length + g.nrm.length) * 4, usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST });
+      device.queue.writeBuffer(vbuf, 0, g.pos);
+      device.queue.writeBuffer(vbuf, g.pos.length * 4, g.nrm);
+      const ibuf = device.createBuffer({ size: g.idx.length * 2, usage: GPUBufferUsage.INDEX | GPUBufferUsage.COPY_DST });
+      device.queue.writeBuffer(ibuf, 0, new Uint16Array(g.idx));
+      return { vbuf: vbuf, ibuf: ibuf, count: g.idx.length };
+    }
+    function getMesh(g) {
+      if (g.vbuf) return g; // already-uploaded dynamic mesh (cape etc.)
+      const key = g.__id || (g.__id = 'm' + (meshCache.size + 1));
+      let m = meshCache.get(key);
+      if (!m) { m = uploadMesh(g); meshCache.set(key, m); }
+      return m;
+    }
+
+    let frame = 0;
+    function render(cam, env, statics, dynamics, grassDraw, particles, trail) {
+      resize();
+      // light matrix
+      const L = env.sunDir;
+      const tgt = env.shadowTarget;
+      const eye = [tgt[0] - L[0] * 90, tgt[1] - L[1] * 90, tgt[2] - L[2] * 90];
+      const lightView = M.lookAt(eye, tgt, [0, 1, 0]);
+      const lightProj = M.ortho(-52, 52, -52, 52, 10, 190);
+      cam.lightVP = M.mul(lightProj, lightView);
+
+      writeGlobals(cam, env);
+
+      // ---- object staging ----
+      let nObj = 0;
+      const shadowCasters = [];
+      function stage(d) {
+        if (nObj >= MAX_OBJECTS) return;
+        const f = nObj * (OBJ_STRIDE / 4);
+        staging.set(d.m, f);
+        staging[f + 16] = d.tint[0]; staging[f + 17] = d.tint[1]; staging[f + 18] = d.tint[2]; staging[f + 19] = d.tint[3];
+        staging[f + 20] = d.mp[0]; staging[f + 21] = d.mp[1]; staging[f + 22] = d.mp[2]; staging[f + 23] = d.mp[3];
+        if (d.shadow) shadowCasters.push(d);
+        nObj++;
+      }
+      for (const d of statics) stage(d);
+      for (const d of dynamics) stage(d);
+      if (nObj > 0) device.queue.writeBuffer(objUB, 0, staging, 0, nObj * (OBJ_STRIDE / 4));
+
+      // dynamic slot index per draw is order-based: statics then dynamics share indexing
+      let slot = 0;
+      const enc = device.createCommandEncoder();
+
+      // ---- shadow pass ----
+      const sp = E.PARAMS.noshadow ? { setPipeline(){}, setBindGroup(){}, setVertexBuffer(){}, setIndexBuffer(){}, drawIndexed(){}, end(){} } : enc.beginRenderPass({
+        colorAttachments: [],
+        depthStencilAttachment: {
+          view: shadowView, depthClearValue: 1.0, depthLoadOp: 'clear', depthStoreOp: 'store'
+        }
+      });
+      sp.setPipeline(P.shadowActor);
+      sp.setBindGroup(0, bgGlobals);
+      for (const d of shadowCasters) {
+        const mesh = getMesh(d.mesh);
+        sp.setBindGroup(1, bgObject, [slot * OBJ_STRIDE]);
+        sp.setVertexBuffer(0, mesh.vbuf);
+        sp.setIndexBuffer(mesh.ibuf, 'uint16');
+        sp.drawIndexed(mesh.count);
+        slot++;
+      }
+      sp.end();
+
+      // ---- main pass ----
+      const mp2 = enc.beginRenderPass({
+        colorAttachments: [NOMSAA ? {
+          view: resolveTex.createView(),
+          loadOp: 'clear', storeOp: 'store',
+          clearValue: { r: 0.001, g: 0.002, b: 0.005, a: 1 }
+        } : {
+          view: msaaColor.createView(),
+          resolveTarget: resolveTex.createView(),
+          loadOp: 'clear', storeOp: 'store',
+          clearValue: { r: 0.001, g: 0.002, b: 0.005, a: 1 }
+        }],
+        depthStencilAttachment: E.PARAMS.nodepth ? undefined : {
+          view: msaaDepth.createView(), depthClearValue: 1.0, depthLoadOp: 'clear', depthStoreOp: 'discard'
+        }
+      });
+      // sky
+      if (!E.PARAMS.nosky) {
+        mp2.setPipeline(P.sky);
+        mp2.setBindGroup(0, bgGlobals);
+        mp2.draw(3);
+      }
+      // terrain
+      if (env.terrainMesh && !E.PARAMS.noterrain) {
+        mp2.setPipeline(P.terrain);
+        mp2.setBindGroup(0, bgGlobals);
+        mp2.setBindGroup(1, bgShadow);
+        const tm = env.terrainMesh;
+        mp2.setVertexBuffer(0, tm.vbuf);
+        mp2.setIndexBuffer(tm.ibuf, 'uint16');
+        mp2.drawIndexed(tm.count);
+      }
+      // grass
+      if (grassDraw && grassDraw.count > 0 && !E.PARAMS.nograss) {
+        mp2.setPipeline(P.grass);
+        mp2.setBindGroup(0, bgGlobals);
+        mp2.setBindGroup(1, bgShadow);
+        mp2.setVertexBuffer(0, grassDraw.buf);
+        mp2.draw(10, grassDraw.count);
+      }
+      // objects
+      slot = 0;
+      if (nObj > 0 && !E.PARAMS.noobj) {
+        mp2.setPipeline(P.actor);
+        mp2.setBindGroup(0, bgGlobals);
+        mp2.setBindGroup(1, bgShadow);
+        for (const d of statics) {
+          const mesh = getMesh(d.mesh);
+          mp2.setBindGroup(2, bgObject, [slot * OBJ_STRIDE]);
+          mp2.setVertexBuffer(0, mesh.vbuf);
+          mp2.setIndexBuffer(mesh.ibuf, 'uint16');
+          mp2.drawIndexed(mesh.count);
+          slot++;
+        }
+        for (const d of dynamics) {
+          const mesh = getMesh(d.mesh);
+          mp2.setBindGroup(2, bgObject, [slot * OBJ_STRIDE]);
+          mp2.setVertexBuffer(0, mesh.vbuf);
+          mp2.setIndexBuffer(mesh.ibuf, 'uint16');
+          mp2.drawIndexed(mesh.count);
+          slot++;
+        }
+      }
+      // sword trail
+      if (trail && trail.count >= 4) {
+        device.queue.writeBuffer(trailVBuf, 0, trail.data, 0, trail.count * 4);
+        mp2.setPipeline(P.trail);
+        mp2.setBindGroup(0, bgGlobals);
+        mp2.setVertexBuffer(0, trailVBuf);
+        mp2.draw(trail.count, 1, 0, 0);
+      }
+      // particles
+      if (particles && particles.count > 0 && !E.PARAMS.noparticles) {
+        device.queue.writeBuffer(particleVBuf, 0, particles.data, 0, particles.count * 10);
+        mp2.setPipeline(P.particles);
+        mp2.setBindGroup(0, bgGlobals);
+        mp2.setVertexBuffer(0, particleVBuf);
+        mp2.draw(4, particles.count, 0, 0);
+      }
+      mp2.end();
+
+      // ---- post chain ----
+      function fullPass(pipeline, colorView, bg0, bg1) {
+        const p = enc.beginRenderPass({
+          colorAttachments: [{ view: colorView, loadOp: 'clear', storeOp: 'store', clearValue: { r: 1, g: 0, b: 1, a: 1 } }]
+        });
+        p.setPipeline(pipeline);
+        p.setBindGroup(0, bg0);
+        if (bg1) p.setBindGroup(1, bg1);
+        p.draw(3);
+        p.end();
+        if (blitCount < 2) E.log('fullPass: ' + pipeline.label);
+      }
+      if (!E.PARAMS.nopost) {
+        fullPass(P.bright, bloomAView, bgBrightView);
+        fullPass(P.blurH, bloomBView, bgBlurH);
+        fullPass(P.blurV, bloomAView, bgBlurV);
+      }
+      if (BLIT) {
+        if (!E.PARAMS.nocomposite) fullPass(P.composite, presentTex.createView(), bgGlobals, bgComposite);
+      } else {
+        fullPass(P.composite, ctx.getCurrentTexture().createView(), bgGlobals, bgComposite);
+      }
+
+      // BLIT present: fold the copy into the SAME submit, then map asynchronously
+      if (BLIT && presentTex && !blitBusy) {
+        blitBusy = true;
+        readFlip = !readFlip;
+        const rb = readFlip ? readA : readB;
+        const bpr = Math.ceil(canvasW * 4 / 256) * 256; // 256-aligned stride
+        enc.copyTextureToBuffer({ texture: presentTex }, { buffer: rb, bytesPerRow: bpr, rowsPerImage: canvasH }, [canvasW, canvasH, 1]);
+        device.queue.submit([enc.finish()]);
+        if (blitCount < 3) E.log('blit: submitted frame ' + (blitCount + 1) + ' with copy, mapping...');
+        rb.mapAsync(GPUMapMode.READ).then(function () {
+          const u8 = new Uint8Array(rb.getMappedRange());
+          if (imgDataCache.w !== canvasW || imgDataCache.h !== canvasH) {
+            imgDataCache.d = out2d.createImageData(canvasW, canvasH);
+            imgDataCache.w = canvasW; imgDataCache.h = canvasH;
+          }
+          const dst = imgDataCache.d.data;
+          const rowBytes = canvasW * 4;
+          for (let y = 0; y < canvasH; y++) {
+            const src = y * bpr;
+            const dsto = y * rowBytes;
+            for (let x = 0; x < rowBytes; x += 4) {
+              dst[dsto + x] = u8[src + x];
+              dst[dsto + x + 1] = u8[src + x + 1];
+              dst[dsto + x + 2] = u8[src + x + 2];
+              dst[dsto + x + 3] = 255;
+            }
+          }
+          out2d.putImageData(imgDataCache.d, 0, 0);
+          rb.unmap();
+          blitBusy = false;
+          blitCount++;
+          window.__blitFrames = blitCount;
+          if (blitCount <= 3) {
+            const mid = (Math.floor(canvasH / 2) * bpr) + (Math.floor(canvasW / 2) * 4);
+            E.log('blit readback #' + blitCount + ' ok | first px: ' + u8[0] + ',' + u8[1] + ',' + u8[2] +
+                  ' | center px: ' + u8[mid] + ',' + u8[mid + 1] + ',' + u8[mid + 2] +
+                  ' | imgdata center: ' + imgDataCache.d.data[mid] + ',' + imgDataCache.d.data[mid + 1]);
+          }
+        }).catch(function (err) {
+          E.fatal('BLIT present failed: ' + err.message);
+          blitBusy = false;
+        });
+      } else {
+        device.queue.submit([enc.finish()]);
+      }
+      frame++;
+      return nObj;
+    }
+
+    // debug: read back center pixels of the HDR scene target
+    async function debugRead() {
+      const w = canvasW, h = canvasH;
+      const bpp = 8; // rgba16float
+      const bytesPerRow = Math.ceil(w * bpp / 256) * 256;
+      const buf = device.createBuffer({ size: bytesPerRow * h, usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ });
+      const enc2 = device.createCommandEncoder();
+      enc2.copyTextureToBuffer({ texture: resolveTex }, { buffer: buf, bytesPerRow: bytesPerRow, rowsPerImage: h }, [w, h, 1]);
+      device.queue.submit([enc2.finish()]);
+      await buf.mapAsync(GPUMapMode.READ);
+      const d = new Uint16Array(buf.getMappedRange());
+      function px(x, y) {
+        const o = (y * bytesPerRow + x * bpp) / 2;
+        return [f16(d[o]), f16(d[o + 1]), f16(d[o + 2])].map(function (v) { return v.toFixed(3); }).join(',');
+      }
+      const out = {
+        center: px(Math.floor(w / 2), Math.floor(h / 2)),
+        sky: px(Math.floor(w / 2), Math.floor(h * 0.15)),
+        ground: px(Math.floor(w / 2), Math.floor(h * 0.85)),
+        left: px(Math.floor(w * 0.1), Math.floor(h / 2))
+      };
+      buf.unmap(); buf.destroy();
+      return out;
+    }
+    function f16(h) {
+      const s = (h & 0x8000) >> 15, e = (h & 0x7c00) >> 10, f = h & 0x03ff;
+      if (e === 0) return (s ? -1 : 1) * Math.pow(2, -14) * (f / 1024);
+      if (e === 0x1f) return NaN;
+      return (s ? -1 : 1) * Math.pow(2, e - 15) * (1 + f / 1024);
+    }
+
+    return {
+      device: device,
+      format: format,
+      render: render,
+      getMesh: getMesh,
+      uploadMesh: uploadMesh,
+      resize: resize,
+      debugRead: debugRead,
+      get width() { return canvasW; },
+      get height() { return canvasH; }
+    };
+  };
+})(window.E = window.E || {});
+
+
+(function (E) {
+  // ============ EMBERFALL :: 05_world.js ============
+  // Terrain, grass, castle Aldervale, standing stones, dead trees, particles.
+  const M = E.M;
+
+  // -------- world constants (shared) --------
+  const W = E.WORLD = {
+    CASTLE: [0, -62],   // plateau center
+    GATE: [0, -47],     // gate position (defense point)
+    STONES: [0, 4],     // standing stones circle
+    PLAY_R: 55
+  };
+
+  E.buildWorld = async function (renderer, wasm) {
+    const statics = [];
+    const H = wasm.terrainH;
+
+    if (E.PARAMS.fast) {
+      // minimal world for engine debugging
+      const bladeData = new Float32Array(100 * 12);
+      const grassBuf = renderer.device.createBuffer({ size: 100 * 48, usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST });
+      renderer.device.queue.writeBuffer(grassBuf, 0, bladeData);
+      E.log('FAST mode: minimal world');
+      return {
+        statics: statics,
+        terrain: null,
+        grass: { buf: grassBuf, count: 100 },
+        height: function (x, z) { return Math.sin(x * 0.05) * Math.cos(z * 0.05) * 1.5; },
+        grassMask: wasm.grassMask
+      };
+    }
+
+    // ---------- terrain ----------
+    const SIZE = 240, RES = 192, HALF = SIZE / 2;
+    const verts = new Float32Array((RES + 1) * (RES + 1) * 7);
+    let vi = 0;
+    for (let j = 0; j <= RES; j++) {
+      for (let i = 0; i <= RES; i++) {
+        const x = -HALF + SIZE * i / RES, z = -HALF + SIZE * j / RES;
+        const h = H(x, z);
+        const e = 0.9;
+        const hx1 = H(x - e, z), hx2 = H(x + e, z);
+        const hz1 = H(x, z - e), hz2 = H(x, z + e);
+        let nx = hx1 - hx2, ny = 2 * e, nz = hz1 - hz2;
+        const nl = Math.hypot(nx, ny, nz) || 1;
+        nx /= nl; ny /= nl; nz /= nl;
+        const slope = 1 - ny;
+        const ao = E.clamp(1 - slope * 0.55, 0.55, 1);
+        verts[vi++] = x; verts[vi++] = h; verts[vi++] = z;
+        verts[vi++] = nx; verts[vi++] = ny; verts[vi++] = nz;
+        verts[vi++] = ao;
+      }
+    }
+    const idx = new Uint16Array(RES * RES * 6);
+    let ii = 0;
+    for (let j = 0; j < RES; j++) {
+      for (let i = 0; i < RES; i++) {
+        const a = j * (RES + 1) + i, b = a + RES + 1;
+        idx[ii++] = a; idx[ii++] = b; idx[ii++] = a + 1;
+        idx[ii++] = a + 1; idx[ii++] = b; idx[ii++] = b + 1;
+      }
+    }
+    const tVBuf = renderer.device.createBuffer({ size: verts.byteLength, usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST });
+    renderer.device.queue.writeBuffer(tVBuf, 0, verts);
+    const tIBuf = renderer.device.createBuffer({ size: idx.byteLength, usage: GPUBufferUsage.INDEX | GPUBufferUsage.COPY_DST });
+    renderer.device.queue.writeBuffer(tIBuf, 0, idx);
+    const terrain = { vbuf: tVBuf, ibuf: tIBuf, count: idx.length };
+    E.log('Terrain mesh: ' + (RES + 1) * (RES + 1) + ' verts, ' + idx.length / 3 + ' tris (heights from WASM)');
+
+    // ---------- grass ----------
+    const budget = E.PARAMS.grass;
+    const bladeData = new Float32Array(budget * 12);
+    let bladeCount = 0;
+    let attempts = 0;
+    while (bladeCount < budget && attempts < budget * 4) {
+      attempts++;
+      const a = E.rand() * Math.PI * 2;
+      const r = Math.sqrt(E.rand()) * 57;
+      const x = Math.cos(a) * r, z = Math.sin(a) * r;
+      const m = wasm.grassMask(x, z);
+      if (m < E.rand()) continue;
+      const y = H(x, z);
+      const o = bladeCount * 12;
+      bladeData[o] = x; bladeData[o + 1] = y - 0.02; bladeData[o + 2] = z; bladeData[o + 3] = 0;
+      bladeData[o + 4] = E.rand() * Math.PI * 2;                    // rotY
+      bladeData[o + 5] = 0.42 + Math.pow(E.rand(), 1.4) * 0.72;     // height
+      bladeData[o + 6] = 0.016 + E.rand() * 0.022;                  // width
+      bladeData[o + 7] = E.rand() * Math.PI * 2;                    // phase
+      bladeData[o + 8] = E.rand();                                  // hue variance
+      bladeData[o + 9] = E.rand() * 0.5;                            // dry
+      bladeData[o + 10] = (E.rand() - 0.5) * 0.5;                   // lean
+      bladeData[o + 11] = 0.7 + E.rand() * 0.3;                     // ao
+      bladeCount++;
+    }
+    const grassBuf = renderer.device.createBuffer({ size: bladeCount * 48, usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST });
+    renderer.device.queue.writeBuffer(grassBuf, 0, bladeData, 0, bladeCount * 12);
+    E.log('Grass: ' + bladeCount + ' blades instanced (' + attempts + ' samples)');
+
+    // ---------- props ----------
+    const stoneTint = [0.16, 0.175, 0.165, 0];
+    const rockTint = [0.26, 0.265, 0.27, 0];
+    const matStone = [0.9, 0.05, 0, 0];
+    const barkTint = [0.125, 0.098, 0.082, 0];
+    const matBark = [0.95, 0, 0, 0];
+    const matMoss = [0.9, 0.05, 0, 1.5];
+
+    function addStatic(mesh, px, py, pz, yaw, tilt, tint, mp, shadow, scale) {
+      const q = M.Q.mul(M.Q.axisAngle(0, 1, 0, yaw || 0), tilt ? M.Q.axisAngle(tilt[0], tilt[1], tilt[2], tilt[3]) : [0, 0, 0, 1]);
+      const s = scale || 1;
+      statics.push({
+        mesh: mesh, m: M.compose(px, py, pz, q, s, s, s),
+        tint: tint, mp: mp, shadow: shadow !== false
+      });
+    }
+
+    // standing stones ring
+    const stoneGeo = GEO_stone();
+    for (let k = 0; k < 7; k++) {
+      const a = k / 7 * Math.PI * 2 + 0.3;
+      const x = W.STONES[0] + Math.cos(a) * 6.5, z = W.STONES[1] + Math.sin(a) * 6.5;
+      const y = H(x, z);
+      addStatic(stoneGeo, x, y - 0.15, z, a + E.randRange(-0.3, 0.3), [0.13, 0.05, 1, E.randRange(-0.1, 0.1)], stoneTint, matStone, true, E.randRange(0.85, 1.25));
+      // rune strip (emissive)
+      addStatic(E.GEO.box(0.12, 1.6, 0.05), x - Math.cos(a) * 0.42, y + 1.1, z - Math.sin(a) * 0.42, a + Math.PI / 2, null, [0.35, 0.75, 0.9, 0.5], matMoss, false);
+    }
+    // fallen altar at center
+    addStatic(E.GEO.box(2.4, 0.5, 1.2), W.STONES[0], H(W.STONES[0], W.STONES[1]) + 0.2, W.STONES[1], 0.3, [0.08, 0, 1, 0.06], rockTint, matStone, true);
+
+    // dead trees
+    const treeGeo = GEO_tree();
+    let placed = 0, guard = 0;
+    while (placed < 14 && guard++ < 300) {
+      const a = E.rand() * Math.PI * 2, r = E.randRange(26, 52);
+      const x = Math.cos(a) * r, z = Math.sin(a) * r;
+      if (Math.abs(x) < 5 && z > -58 && z < 26) continue;         // keep path clear
+      if (Math.hypot(x, z - 4) < 12) continue;                     // stones clearing
+      if (Math.hypot(x, z + 62) < 22) continue;                    // castle grounds
+      const y = H(x, z);
+      addStatic(treeGeo, x, y - 0.1, z, E.rand() * Math.PI * 2, [0.06, 0, 1, E.randRange(-0.12, 0.12)], barkTint, matBark, true, E.randRange(0.8, 1.5));
+      placed++;
+    }
+
+    // ---------- castle Aldervale ----------
+    const cy = 6.0; // plateau height
+    const CX = W.CASTLE[0], CZ = W.CASTLE[1];
+    const stoneGeoWall = E.GEO.box(1, 1, 1, 0.92);
+    function wall(x0, z0, x1, z1, hgt) {
+      const len = Math.hypot(x1 - x0, z1 - z0);
+      const mid = [(x0 + x1) / 2, (z0 + z1) / 2];
+      const yaw = Math.atan2(x1 - x0, z1 - z0);
+      statics.push({ mesh: stoneGeoWall, m: M.compose(mid[0], cy + hgt / 2, mid[1], M.Q.axisAngle(0, 1, 0, yaw), len, hgt, 1.6), tint: stoneTint, mp: matStone, shadow: true });
+      // crenellations
+      const n = Math.floor(len / 1.6);
+      for (let k = 0; k <= n; k++) {
+        const t = k / n - 0.5;
+        const bx = mid[0] + Math.sin(yaw) * t * len * 0.94;
+        const bz = mid[1] + Math.cos(yaw) * t * len * 0.94;
+        statics.push({ mesh: stoneGeoWall, m: M.compose(bx, cy + hgt + 0.45, bz, M.Q.axisAngle(0, 1, 0, yaw), 0.85, 0.9, 1.7), tint: stoneTint, mp: matStone, shadow: true });
+      }
+    }
+    // gate towers
+    const towerGeo = GEO_tower();
+    for (const sx of [-1, 1]) {
+      const x = CX + sx * 6.5, z = W.GATE[1] - 1;
+      statics.push({ mesh: towerGeo, m: M.compose(x, cy, z, M.Q.axisAngle(0, 1, 0, sx * 0.2), 1, 1, 1), tint: stoneTint, mp: matStone, shadow: true });
+    }
+    // keep (big tower at back)
+    statics.push({ mesh: GEO_keep(), m: M.compose(CX, cy - 0.2, CZ - 5, M.Q.axisAngle(0, 1, 0, 0), 1, 1, 1), tint: stoneTint, mp: matStone, shadow: true });
+    // curtain walls
+    wall(-6.0, W.GATE[1], -19, W.GATE[1] + 2.5, 5);
+    wall(6.0, W.GATE[1], 19, W.GATE[1] + 2.5, 5);
+    wall(-19, W.GATE[1] + 2.5, -17, CZ - 6, 5.5);
+    wall(19, W.GATE[1] + 2.5, 17, CZ - 6, 5.5);
+    wall(-17, CZ - 6, -8, CZ - 9, 5);
+    wall(17, CZ - 6, 8, CZ - 9, 5);
+    // gate arch
+    addStatic(E.GEO.box(9.6, 1.1, 2.2), CX, cy + 4.4, W.GATE[1] - 0.6, 0, null, stoneTint, matStone, true);
+    // banners (emissive crimson) on gate towers
+    for (const sx of [-1, 1]) {
+      addStatic(E.GEO.quad(1.4, 2.6), CX + sx * 6.5, cy + 5.4, W.GATE[1] + 0.95, sx * 0.15, null, [0.62, 0.09, 0.1, 0.85], [0.8, 0, 0, sx * 2.1], false);
+      addStatic(E.GEO.quad(1.4, 2.6), CX + sx * 6.5, cy + 5.4, W.GATE[1] - 0.95, Math.PI - sx * 0.15, null, [0.62, 0.09, 0.1, 0.85], [0.8, 0, 0, sx * 2.1], false);
+    }
+    // keep windows (emissive amber)
+    for (let k = 0; k < 5; k++) {
+      const a = k / 5 * Math.PI * 2 + 0.5;
+      addStatic(E.GEO.box(0.5, 1.1, 0.18), CX + Math.cos(a) * 3.6, cy + 7 + (k % 2) * 2.2, CZ - 5 + Math.sin(a) * 3.6, a, null, [1.0, 0.58, 0.22, 1.3], [0.6, 0, 0, k * 1.3], false);
+    }
+    // rubble near east wall
+    for (let k = 0; k < 7; k++) {
+      addStatic(E.GEO.box(E.randRange(0.6, 1.6), E.randRange(0.4, 1.0), E.randRange(0.6, 1.4)),
+        E.randRange(12, 19), cy + 0.3, E.randRange(-50, -40), E.rand() * Math.PI, [0.1, 0.2, 1, E.randRange(-0.3, 0.3)], rockTint, matStone, true);
+    }
+    E.log('Castle Aldervale built (' + statics.length + ' static draws)');
+
+    return {
+      statics: statics,
+      terrain: terrain,
+      grass: { buf: grassBuf, count: bladeCount },
+      height: H,
+      grassMask: wasm.grassMask
+    };
+  };
+
+  // -------- procedural prop geometries --------
+  function GEO_stone() {
+    const pts = [];
+    const n = 7;
+    for (let i = 0; i <= n; i++) {
+      const t = i / n;
+      pts.push([E.lerp(0.55, 0.32, t) * (1 + Math.sin(i * 2.7) * 0.13), t * 3.1]);
+    }
+    return E.GEO.merge([{ geo: E.GEO.lathe(pts, 6), s: [1, 1, 0.62] }]);
+  }
+  function GEO_tree() {
+    const parts = [];
+    let y = 0, x = 0, yaw = 0;
+    for (let i = 0; i < 4; i++) {
+      const segLen = E.lerp(1.15, 0.7, i / 3);
+      const r0 = E.lerp(0.30, 0.09, i / 3), r1 = E.lerp(0.22, 0.07, (i + 1) / 3);
+      parts.push({ geo: E.GEO.cylinder(r0, r1, segLen, 6, i === 0), t: [x, y + segLen / 2, 0], q: M.Q.axisAngle(1, 0, 0, 0) });
+      y += segLen;
+      x += E.lerp(0.1, 0.28, i / 3);
+    }
+    // branches
+    for (let b = 0; b < 4; b++) {
+      const ba = b * 1.9 + 0.4;
+      const bl = E.randRange(0.9, 1.5);
+      parts.push({
+        geo: E.GEO.cylinder(0.07, 0.02, bl, 5, false),
+        t: [x * 0.75, y * 0.72 + b * 0.22, 0],
+        q: M.Q.mul(M.Q.axisAngle(0, 1, 0, ba), M.Q.axisAngle(0, 0, 1, E.randRange(0.6, 1.1)))
+      });
+    }
+    return E.GEO.merge(parts);
+  }
+  function GEO_tower() {
+    const parts = [
+      { geo: E.GEO.cylinder(2.1, 2.3, 8, 10, false), t: [0, 4, 0] },
+      { geo: E.GEO.cylinder(2.55, 2.75, 0.7, 10, false), t: [0, 8.3, 0] },
+      { geo: E.GEO.cylinder(2.3, 0.35, 3.4, 10, false), t: [0, 10.4, 0] },
+      { geo: E.GEO.lathe([[0, 0], [0.3, 0], [0.34, -0.4], [0, -0.4]], 4), t: [0, 12.35, 0] }
+    ];
+    // crenellations ring on the ledge
+    for (let k = 0; k < 8; k++) {
+      const a = k / 8 * Math.PI * 2;
+      parts.push({ geo: E.GEO.box(0.6, 0.7, 0.5), t: [Math.cos(a) * 2.5, 9.05, Math.sin(a) * 2.5], q: M.Q.axisAngle(0, 1, 0, -a) });
+    }
+    return E.GEO.merge(parts);
+  }
+  function GEO_keep() {
+    const parts = [
+      { geo: E.GEO.cylinder(3.4, 3.7, 13, 12, false), t: [0, 6.5, 0] },
+      { geo: E.GEO.cylinder(4.1, 4.3, 0.9, 12, false), t: [0, 13.3, 0] },
+      { geo: E.GEO.cylinder(3.7, 0.4, 5, 12, false), t: [0, 16.2, 0] },
+      { geo: E.GEO.lathe([[0, 0], [0.42, 0], [0.47, -0.55], [0, -0.55]], 4), t: [0, 18.9, 0] }
+    ];
+    for (let k = 0; k < 10; k++) {
+      const a = k / 10 * Math.PI * 2;
+      parts.push({ geo: E.GEO.box(0.7, 0.8, 0.55), t: [Math.cos(a) * 3.95, 14.1, Math.sin(a) * 3.95], q: M.Q.axisAngle(0, 1, 0, -a) });
+    }
+    return E.GEO.merge(parts);
+  }
+
+  // -------- particle system --------
+  E.Particles = function () {
+    const MAX = 4096;
+    const px = new Float32Array(MAX * 3), vx = new Float32Array(MAX * 3);
+    const life = new Float32Array(MAX), maxLife = new Float32Array(MAX);
+    const size = new Float32Array(MAX), sizeV = new Float32Array(MAX);
+    const col = new Float32Array(MAX * 4), rot = new Float32Array(MAX), rotV = new Float32Array(MAX);
+    const grav = new Float32Array(MAX), drag = new Float32Array(MAX), alpha0 = new Float32Array(MAX);
+    const out = new Float32Array(MAX * 10);
+    let cursor = 0, aliveList = [];
+    const api = { count: 0, data: out };
+
+    function spawn(o) {
+      const i = cursor; cursor = (cursor + 1) % MAX;
+      px[i * 3] = o.pos[0]; px[i * 3 + 1] = o.pos[1]; px[i * 3 + 2] = o.pos[2];
+      vx[i * 3] = (o.vel ? o.vel[0] : 0); vx[i * 3 + 1] = (o.vel ? o.vel[1] : 0); vx[i * 3 + 2] = (o.vel ? o.vel[2] : 0);
+      life[i] = o.life; maxLife[i] = o.life;
+      size[i] = o.size; sizeV[i] = o.sizeV || 0;
+      col[i * 4] = o.color[0]; col[i * 4 + 1] = o.color[1]; col[i * 4 + 2] = o.color[2]; col[i * 4 + 3] = o.color[3];
+      rot[i] = o.rot || 0; rotV[i] = o.rotV || 0;
+      grav[i] = o.grav || 0; drag[i] = o.drag || 0;
+      alpha0[i] = 1;
+    }
+    api.spawn = spawn;
+
+    api.burst = function (pos, n, opts) {
+      for (let k = 0; k < n; k++) {
+        const a = Math.random() * Math.PI * 2, b = Math.random() * Math.PI - Math.PI / 2;
+        const sp = opts.speed * (0.4 + Math.random() * 0.8);
+        spawn({
+          pos: pos,
+          vel: [Math.cos(a) * Math.cos(b) * sp, Math.sin(b) * sp + (opts.up || 0), Math.sin(a) * Math.cos(b) * sp],
+          life: opts.life * (0.6 + Math.random() * 0.8),
+          size: opts.size * (0.6 + Math.random() * 0.9),
+          sizeV: opts.sizeV || 0,
+          color: opts.color,
+          rot: Math.random() * 6.28, rotV: (Math.random() - 0.5) * 3,
+          grav: opts.grav || 0, drag: opts.drag || 0
+        });
+      }
+    };
+
+    api.update = function (dt, emitters) {
+      aliveList.length = 0;
+      for (let i = 0; i < MAX; i++) {
+        if (life[i] <= 0) continue;
+        life[i] -= dt;
+        if (life[i] <= 0) continue;
+        vx[i * 3 + 1] -= grav[i] * dt;
+        if (drag[i]) {
+          const f = Math.exp(-drag[i] * dt);
+          vx[i * 3] *= f; vx[i * 3 + 1] *= f; vx[i * 3 + 2] *= f;
+        }
+        px[i * 3] += vx[i * 3] * dt; px[i * 3 + 1] += vx[i * 3 + 1] * dt; px[i * 3 + 2] += vx[i * 3 + 2] * dt;
+        size[i] += sizeV[i] * dt;
+        rot[i] += rotV[i] * dt;
+        aliveList.push(i);
+      }
+      // ambient emitters
+      if (emitters) emitters(dt, spawn);
+      // fill output buffer
+      let n = 0;
+      for (let k = 0; k < aliveList.length && n < MAX; k++) {
+        const i = aliveList[k];
+        const t = life[i] / maxLife[i];
+        const o = n * 10;
+        out[o] = px[i * 3]; out[o + 1] = px[i * 3 + 1]; out[o + 2] = px[i * 3 + 2]; out[o + 3] = size[i];
+        const fade = t < 0.7 ? t / 0.7 : 1; // fade in
+        const a = Math.min(1, fade) * t;
+        out[o + 4] = col[i * 4]; out[o + 5] = col[i * 4 + 1]; out[o + 6] = col[i * 4 + 2]; out[o + 7] = col[i * 4 + 3] * a;
+        out[o + 8] = rot[i]; out[o + 9] = 1;
+        n++;
+      }
+      api.count = n;
+    };
+    return api;
+  };
+})(window.E = window.E || {});
+
+
+(function (E) {
+  // ============ EMBERFALL :: 06_actors.js ============
+  // Procedural character models, pose animation, player/wizard/wraith AI.
+  const M = E.M;
+  const G = E.GEO;
+
+  function qe(rx, ry, rz) { // euler -> quat (YXZ order)
+    return M.Q.mul(M.Q.axisAngle(0, 1, 0, ry), M.Q.mul(M.Q.axisAngle(1, 0, 0, rx), M.Q.axisAngle(0, 0, 1, rz)));
+  }
+
+  // -------- base character --------
+  class Character {
+    constructor(parts) {
+      // parts: [{name, mesh, parent(null=root), rest:[x,y,z], tint, mp, shadow, poseQ?}]
+      this.parts = {};
+      this.roots = [];
+      for (const p of parts) {
+        const rec = Object.assign({ world: M.ident(), pose: null }, p);
+        this.parts[p.name] = rec;
+        if (!p.parent) this.roots.push(rec);
+      }
+      this.scale = 1;
+      this.visible = true;
+    }
+    setPose(name, rx, ry, rz, px, py, pz) {
+      const p = this.parts[name];
+      if (!p) return;
+      p.pose = { q: qe(rx || 0, ry || 0, rz || 0), pos: [px || 0, py || 0, pz || 0] };
+    }
+    clearPose() {
+      for (const k in this.parts) this.parts[k].pose = null;
+    }
+    computeWorld(x, y, z, yaw) {
+      const rootQ = qe(0, yaw, 0);
+      // resolve each part after its parent (iterate until stable — hierarchy is shallow)
+      const resolved = {};
+      let remaining = [];
+      for (const k in this.parts) remaining.push(k);
+      let guard = 0;
+      while (remaining.length && guard++ < 10) {
+        const next = [];
+        for (const k of remaining) {
+          const p = this.parts[k];
+          if (p.parent && !resolved[p.parent]) { next.push(k); continue; }
+          let px = x, py = y, pz = z, q = rootQ;
+          if (p.parent) {
+            const pp = resolved[p.parent];
+            px = pp.pos[0]; py = pp.pos[1]; pz = pp.pos[2]; q = pp.q;
+          }
+          if (p.rest) { px += p.rest[0]; py += p.rest[1]; pz += p.rest[2]; }
+          if (p.restQ) q = M.Q.mul(q, p.restQ);
+          if (p.pose) {
+            px += p.pose.pos[0]; py += p.pose.pos[1]; pz += p.pose.pos[2];
+            q = M.Q.mul(q, p.pose.q);
+          }
+          resolved[k] = { pos: [px, py, pz], q: q };
+          M.compose(px, py, pz, q, this.scale, this.scale, this.scale, p.world);
+        }
+        remaining = next;
+      }
+    }
+    buildDraws(list) {
+      if (!this.visible) return;
+      for (const k in this.parts) {
+        const p = this.parts[k];
+        if (!p.mesh) continue;
+        list.push({ mesh: p.mesh, m: p.world, tint: p.tint, mp: p.mp, shadow: p.shadow !== false });
+      }
+    }
+    partWorld(name) { return this.parts[name] ? this.parts[name].world : M.ident(); }
+  }
+
+  // -------- shared materials --------
+  const ARMOR = [0.30, 0.335, 0.385, 0], ARMOR_DARK = [0.20, 0.225, 0.26, 0];
+  const STEEL = [0.42, 0.46, 0.52, 0];
+  const CLOTH_RED = [0.30, 0.055, 0.065, 0];
+  const LEATHER = [0.14, 0.10, 0.075, 0];
+  const SKIN = [0.36, 0.28, 0.22, 0];
+  const MAT_METAL = [0.32, 0.9, 0, 0];
+  const MAT_METAL_BRIGHT = [0.18, 1.0, 0, 0];
+  const MAT_CLOTH = [0.9, 0.05, 0, 0];
+  const MAT_LEATHER = [0.8, 0.1, 0, 0];
+  const MAT_ROBE = [0.85, 0.05, 1, 0];   // flags=1 -> tatter sway (wraith)
+  const MAT_CLOTH_WS = [0.9, 0.05, 0, 1.5];
+
+  // -------- knight --------
+  function buildKnight() {
+    const chest = G.merge([
+      { geo: G.box(0.42, 0.46, 0.26, 1.22), t: [0, 0.04, 0] },
+      { geo: G.box(0.46, 0.10, 0.30), t: [0, -0.20, 0], s: [1, 1, 1] } // belt
+    ]);
+    const helm = G.merge([
+      { geo: G.sphere(0.135, 10, 7, 1.08), t: [0, 0.06, 0.01] },
+      { geo: G.cylinder(0.10, 0.135, 0.10, 10, false), t: [0, 0.10, 0] },
+      { geo: G.box(0.03, 0.16, 0.02), t: [0, 0.02, 0.125] },       // nasal
+      { geo: G.box(0.30, 0.02, 0.14), t: [0, 0.115, 0.02] }        // brim
+    ]);
+    const sword = G.merge([
+      { geo: G.box(0.052, 0.9, 0.014), t: [0, 0.60, 0] },
+      { geo: G.box(0.028, 0.16, 0.02), t: [0, 0.10, 0] },
+      { geo: G.box(0.24, 0.035, 0.05), t: [0, 0.17, 0] },
+      { geo: G.sphere(0.038, 8, 5), t: [0, -0.01, 0] }
+    ]);
+    return new Character([
+      { name: 'pelvis', mesh: G.box(0.34, 0.22, 0.22, 0.9), rest: [0, 0.98, 0], tint: LEATHER, mp: MAT_LEATHER },
+      { name: 'torso', parent: 'pelvis', mesh: chest, rest: [0, 0.17, 0], tint: ARMOR, mp: MAT_METAL },
+      { name: 'tabard', parent: 'torso', mesh: G.box(0.30, 0.52, 0.02), rest: [0, -0.06, 0.135], tint: CLOTH_RED, mp: MAT_CLOTH },
+      { name: 'head', parent: 'torso', mesh: helm, rest: [0, 0.36, 0], tint: ARMOR_DARK, mp: MAT_METAL_BRIGHT },
+      { name: 'pauldronL', parent: 'torso', mesh: G.sphere(0.15, 9, 5, 0.72), rest: [-0.27, 0.28, 0], tint: ARMOR, mp: MAT_METAL },
+      { name: 'pauldronR', parent: 'torso', mesh: G.sphere(0.15, 9, 5, 0.72), rest: [0.27, 0.28, 0], tint: ARMOR, mp: MAT_METAL },
+      { name: 'armUL', parent: 'pauldronL', mesh: G.cylinder(0.062, 0.052, 0.30, 7), rest: [0, -0.10, 0], tint: LEATHER, mp: MAT_LEATHER },
+      { name: 'armUR', parent: 'pauldronR', mesh: G.cylinder(0.062, 0.052, 0.30, 7), rest: [0, -0.10, 0], tint: LEATHER, mp: MAT_LEATHER },
+      { name: 'armLL', parent: 'armUL', mesh: G.cylinder(0.05, 0.042, 0.28, 7), rest: [0, -0.31, 0], tint: ARMOR_DARK, mp: MAT_METAL },
+      { name: 'armLR', parent: 'armUR', mesh: G.cylinder(0.05, 0.042, 0.28, 7), rest: [0, -0.31, 0], tint: ARMOR_DARK, mp: MAT_METAL },
+      { name: 'handR', parent: 'armLR', mesh: G.box(0.085, 0.11, 0.09), rest: [0, -0.30, 0], tint: LEATHER, mp: MAT_LEATHER },
+      { name: 'sword', parent: 'handR', mesh: sword, rest: [0, -0.07, 0.02], tint: STEEL, mp: MAT_METAL_BRIGHT },
+      { name: 'thighL', parent: 'pelvis', mesh: G.cylinder(0.095, 0.075, 0.44, 7), rest: [-0.12, -0.06, 0], tint: LEATHER, mp: MAT_LEATHER },
+      { name: 'thighR', parent: 'pelvis', mesh: G.cylinder(0.095, 0.075, 0.44, 7), rest: [0.12, -0.06, 0], tint: LEATHER, mp: MAT_LEATHER },
+      { name: 'shinL', parent: 'thighL', mesh: G.cylinder(0.07, 0.055, 0.42, 7), rest: [0, -0.45, 0], tint: ARMOR_DARK, mp: MAT_METAL },
+      { name: 'shinR', parent: 'thighR', mesh: G.cylinder(0.07, 0.055, 0.42, 7), rest: [0, -0.45, 0], tint: ARMOR_DARK, mp: MAT_METAL },
+      { name: 'footL', parent: 'shinL', mesh: G.box(0.13, 0.09, 0.27), rest: [0, -0.43, 0.05], tint: ARMOR_DARK, mp: MAT_METAL },
+      { name: 'footR', parent: 'shinR', mesh: G.box(0.13, 0.09, 0.27), rest: [0, -0.43, 0.05], tint: ARMOR_DARK, mp: MAT_METAL }
+    ]);
+  }
+
+  // -------- wizard --------
+  function buildWizard() {
+    const robe = G.lathe([[0.02, 0], [0.34, 0.02], [0.30, 0.25], [0.21, 0.75], [0.20, 1.05], [0.24, 1.15]], 12);
+    const head = G.merge([
+      { geo: G.sphere(0.125, 10, 7), t: [0, 0.05, 0] },
+      { geo: G.sphere(0.10, 8, 6, 1.1), t: [0, -0.06, 0.045] }  // nose-ish
+    ]);
+    const beard = G.lathe([[0.10, 0], [0.115, -0.06], [0.07, -0.16], [0.015, -0.24]], 8);
+    const hat = G.merge([
+      { geo: G.lathe([[0.02, 0.42], [0.10, 0.30], [0.16, 0.16], [0.20, 0.02]], 10), t: [0, 0.06, 0] },
+      { geo: G.lathe([[0.05, 0], [0.24, 0.02], [0.26, 0.05], [0.05, 0.04]], 10), t: [0, 0.155, 0] },
+      { geo: G.box(0.10, 0.03, 0.06), t: [0.13, 0.20, 0.02], q: qe(0, 0, 0.4) }
+    ]);
+    const staff = G.merge([
+      { geo: G.cylinder(0.028, 0.022, 1.9, 6, false), t: [0, 0.75, 0] },
+      { geo: G.cylinder(0.02, 0.05, 0.16, 6, false), t: [0, 1.72, 0] }
+    ]);
+    return new Character([
+      { name: 'root', rest: [0, 0, 0] },
+      { name: 'robe', parent: 'root', mesh: robe, rest: [0, 0, 0], tint: [0.115, 0.12, 0.20, 0], mp: MAT_CLOTH_WS },
+      { name: 'torso', parent: 'root', mesh: G.sphere(0.21, 10, 7, 1.25), rest: [0, 1.08, 0], tint: [0.13, 0.135, 0.22, 0], mp: MAT_CLOTH_WS },
+      { name: 'mantle', parent: 'torso', mesh: G.lathe([[0.34, 0], [0.30, 0.1], [0.20, 0.16], [0.10, 0.17]], 10), rest: [0, 0.12, 0], tint: [0.16, 0.10, 0.16, 0], mp: MAT_CLOTH_WS },
+      { name: 'head', parent: 'torso', mesh: head, rest: [0, 0.30, 0.01], tint: SKIN, mp: MAT_CLOTH },
+      { name: 'beard', parent: 'head', mesh: beard, rest: [0, -0.04, 0.02], tint: [0.62, 0.62, 0.60, 0], mp: MAT_CLOTH },
+      { name: 'brow', parent: 'head', mesh: hat, rest: [0, 0.10, 0], tint: [0.14, 0.10, 0.20, 0], mp: MAT_CLOTH_WS },
+      { name: 'armL', parent: 'torso', mesh: G.cylinder(0.055, 0.045, 0.34, 6), rest: [-0.26, 0.05, 0], tint: [0.13, 0.135, 0.22, 0], mp: MAT_CLOTH_WS },
+      { name: 'armR', parent: 'torso', mesh: G.cylinder(0.055, 0.045, 0.34, 6), rest: [0.26, 0.05, 0], tint: [0.13, 0.135, 0.22, 0], mp: MAT_CLOTH_WS },
+      { name: 'staff', parent: 'armR', mesh: staff, rest: [0.05, -0.32, 0.06], tint: [0.16, 0.11, 0.07, 0], mp: MAT_LEATHER },
+      { name: 'orb', parent: 'staff', mesh: G.octa(0.09, 0.13), rest: [0, 1.86, 0], tint: [0.55, 0.85, 1.0, 0.8], mp: [0.5, 0, 0, 1.0], shadow: false }
+    ]);
+  }
+
+  // -------- wraith --------
+  function buildWraith() {
+    const robe = G.lathe([[0.02, 0], [0.42, 0.03], [0.36, 0.3], [0.26, 0.8], [0.24, 1.15], [0.30, 1.28]], 10);
+    const hood = G.merge([
+      { geo: G.sphere(0.16, 9, 6, 1.15), t: [0, 0.02, 0] },
+      { geo: G.lathe([[0.20, 0], [0.17, 0.10], [0.10, 0.22], [0.04, 0.30]], 9), t: [0, 0.02, -0.02] }
+    ]);
+    return new Character([
+      { name: 'robe', mesh: robe, rest: [0, 0, 0], tint: [0.045, 0.05, 0.075, 0], mp: MAT_ROBE },
+      { name: 'head', parent: 'robe', mesh: hood, rest: [0, 1.34, 0.02], tint: [0.06, 0.065, 0.09, 0], mp: MAT_ROBE },
+      { name: 'eyes', parent: 'head', mesh: G.merge([
+        { geo: G.octa(0.024, 0.03), t: [-0.055, 0.03, 0.135] },
+        { geo: G.octa(0.024, 0.03), t: [0.055, 0.03, 0.135] }]), rest: [0, 0, 0], tint: [0.62, 0.88, 1.0, 1.7], mp: [0.4, 0, 0, 2.6], shadow: false },
+      { name: 'armL', parent: 'robe', mesh: G.cylinder(0.05, 0.028, 0.5, 6), rest: [-0.30, 1.05, 0.05], tint: [0.05, 0.055, 0.08, 0], mp: MAT_ROBE },
+      { name: 'armR', parent: 'robe', mesh: G.cylinder(0.05, 0.028, 0.5, 6), rest: [0.30, 1.05, 0.05], tint: [0.05, 0.055, 0.08, 0], mp: MAT_ROBE },
+      { name: 'clawL', parent: 'armL', mesh: G.merge([
+        { geo: G.cylinder(0.012, 0.002, 0.14, 4), t: [0, -0.08, 0] },
+        { geo: G.cylinder(0.012, 0.002, 0.11, 4), t: [0.035, -0.07, 0.01], q: qe(0.2, 0, 0.25) },
+        { geo: G.cylinder(0.012, 0.002, 0.11, 4), t: [-0.035, -0.07, 0.01], q: qe(0.2, 0, -0.25) }]), rest: [0, -0.26, 0], tint: [0.14, 0.15, 0.18, 0], mp: MAT_METAL },
+      { name: 'clawR', parent: 'armR', mesh: G.merge([
+        { geo: G.cylinder(0.012, 0.002, 0.14, 4), t: [0, -0.08, 0] },
+        { geo: G.cylinder(0.012, 0.002, 0.11, 4), t: [0.035, -0.07, 0.01], q: qe(0.2, 0, 0.25) },
+        { geo: G.cylinder(0.012, 0.002, 0.11, 4), t: [-0.035, -0.07, 0.01], q: qe(0.2, 0, -0.25) }]), rest: [0, -0.26, 0], tint: [0.14, 0.15, 0.18, 0], mp: MAT_METAL }
+    ]);
+  }
+
+  E.buildKnight = buildKnight;
+  E.buildWizard = buildWizard;
+  E.buildWraith = buildWraith;
+  E.qe = qe;
+
+  // ==================================================================
+  // PLAYER
+  // ==================================================================
+  E.Player = function (world) {
+    const ch = buildKnight();
+    const P = {
+      ch: ch, pos: [0, 0, 12], yaw: Math.PI, vel: [0, 0], speedSm: 0,
+      hp: 100, maxHp: 100, dead: false,
+      attackT: -1, attackDur: 0, combo: 0, comboWindow: 0, didHit: false,
+      rollT: -1, invuln: 0, hitFlash: 0,
+      attackInfo: null, trailCount: 0, trailData: new Float32Array(64 * 4)
+    };
+    // cape verlet cloth
+    const CW = 7, CH = 8, SP = 0.105;
+    const capeN = CW * CH;
+    const cpos = new Float32Array(capeN * 3), cprev = new Float32Array(capeN * 3);
+    const capeIdx = [];
+    for (let r = 0; r < CH - 1; r++) for (let c = 0; c < CW - 1; c++) {
+      const a = r * CW + c, b = a + 1, d = a + CW, e2 = d + 1;
+      capeIdx.push(a, d, b, b, d, e2);
+    }
+    const capeGeo = { pos: new Float32Array(capeN * 3), nrm: new Float32Array(capeN * 3), idx: capeIdx };
+    let capeVBuf = null, capeIBuf = null;
+    P.capeInit = function (device) {
+      capeVBuf = device.createBuffer({ size: capeN * 24, usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST });
+      capeIBuf = device.createBuffer({ size: capeIdx.length * 2, usage: GPUBufferUsage.INDEX | GPUBufferUsage.COPY_DST });
+      device.queue.writeBuffer(capeIBuf, 0, new Uint16Array(capeIdx));
+    };
+    P.capeDraw = function (list) {
+      if (!capeVBuf) return;
+      list.push({ mesh: { vbuf: capeVBuf, ibuf: capeIBuf, count: capeIdx.length }, m: M.ident(), tint: [0.36, 0.06, 0.07, 0], mp: [0.9, 0.05, 1, 0.8], shadow: false });
+    };
+    P.capeUpdate = function (dt, time, torsoW) {
+      // pin top row to shoulder line
+      const anchors = [];
+      for (let c = 0; c < CW; c++) {
+        const t = (c / (CW - 1) - 0.5) * 0.34;
+        anchors.push(M.tpoint(torsoW, [t, 0.30, -0.16]));
+      }
+      for (let c = 0; c < CW; c++) {
+        const i = c * 3;
+        cpos[i] = anchors[c][0]; cpos[i + 1] = anchors[c][1]; cpos[i + 2] = anchors[c][2];
+        cprev[i] = cpos[i]; cprev[i + 1] = cpos[i + 1]; cprev[i + 2] = cpos[i + 2];
+      }
+      const dtc = Math.min(dt, 0.033);
+      for (let r = 1; r < CH; r++) for (let c = 0; c < CW; c++) {
+        const i = (r * CW + c) * 3;
+        let vx2 = (cpos[i] - cprev[i]) * 0.985, vy2 = (cpos[i + 1] - cprev[i + 1]) * 0.985, vz2 = (cpos[i + 2] - cprev[i + 2]) * 0.985;
+        cprev[i] = cpos[i]; cprev[i + 1] = cpos[i + 1]; cprev[i + 2] = cpos[i + 2];
+        const windX = Math.sin(time * 1.7 + r) * 0.8 - P.vel[0] * 2.2;
+        const windZ = Math.cos(time * 1.3 + r * 0.7) * 0.6 - P.vel[1] * 2.2;
+        cpos[i] += vx2 + windX * dtc * dtc * 14;
+        cpos[i + 1] += vy2 - 9.5 * dtc * dtc;
+        cpos[i + 2] += vz2 + windZ * dtc * dtc * 14;
+      }
+      for (let iter = 0; iter < 3; iter++) {
+        for (let r = 0; r < CH; r++) for (let c = 0; c < CW; c++) {
+          if (c < CW - 1) constraint(r * CW + c, r * CW + c + 1, SP);
+          if (r < CH - 1) constraint(r * CW + c, (r + 1) * CW + c, SP * 0.95);
+        }
+      }
+      for (let i = 0; i < capeN; i++) {
+        const h = world.height(cpos[i * 3], cpos[i * 3 + 2]) + 0.06;
+        if (cpos[i * 3 + 1] < h) cpos[i * 3 + 1] = h;
+      }
+      function constraint(a, b, rest) {
+        const dx = cpos[b * 3] - cpos[a * 3], dy = cpos[b * 3 + 1] - cpos[a * 3 + 1], dz = cpos[b * 3 + 2] - cpos[a * 3 + 2];
+        const d = Math.hypot(dx, dy, dz) || 0.0001;
+        const diff = (d - rest) / d * 0.5;
+        if (a >= CW) { // don't move pinned row
+          cpos[a * 3] += dx * diff; cpos[a * 3 + 1] += dy * diff; cpos[a * 3 + 2] += dz * diff;
+        }
+        if (b >= CW) {
+          cpos[b * 3] -= dx * diff; cpos[b * 3 + 1] -= dy * diff; cpos[b * 3 + 2] -= dz * diff;
+        }
+      }
+      // fill gpu buffer
+      const gp = capeGeo.pos, gn = capeGeo.nrm;
+      gp.set(cpos);
+      for (let k = 0; k < capeIdx.length; k += 3) {
+        const a = capeIdx[k] * 3, b = capeIdx[k + 1] * 3, c = capeIdx[k + 2] * 3;
+        const e1x = gp[b] - gp[a], e1y = gp[b + 1] - gp[a + 1], e1z = gp[b + 2] - gp[a + 2];
+        const e2x = gp[c] - gp[a], e2y = gp[c + 1] - gp[a + 1], e2z = gp[c + 2] - gp[a + 2];
+        let nx = e1y * e2z - e1z * e2y, ny = e1z * e2x - e1x * e2z, nz = e1x * e2y - e1y * e2x;
+        const nl = Math.hypot(nx, ny, nz) || 1;
+        nx /= nl; ny /= nl; nz /= nl;
+        gn[a] = nx; gn[a + 1] = ny; gn[a + 2] = nz;
+        gn[b] = nx; gn[b + 1] = ny; gn[b + 2] = nz;
+        gn[c] = nx; gn[c + 1] = ny; gn[c + 2] = nz;
+      }
+      P.device.queue.writeBuffer(capeVBuf, 0, gp);
+      P.device.queue.writeBuffer(capeVBuf, gp.byteLength, gn);
+    };
+    P.device = null;
+    P.setDevice = function (d) { P.device = d; P.capeInit(d); };
+
+    P.attack = function () {
+      if (P.dead || P.attackT >= 0 && P.attackT < P.attackDur * 0.55) return false;
+      if (P.rollT >= 0) return false;
+      if (P.comboWindow > 0) P.combo = (P.combo + 1) % 3;
+      else P.combo = 0;
+      P.comboWindow = 0;
+      P.attackDur = [0.52, 0.48, 0.62][P.combo];
+      P.attackT = 0;
+      P.didHit = false;
+      return true;
+    };
+    P.roll = function (mvx, mvz) {
+      if (P.dead || P.rollT >= 0 || P.attackT >= 0) return;
+      P.rollT = 0;
+      P.rollDir = [mvx, mvz];
+      P.invuln = 0.55;
+    };
+    P.takeDamage = function (dmg, from) {
+      if (P.invuln > 0 || P.dead) return false;
+      P.hp -= dmg;
+      P.hitFlash = 0.5;
+      P.invuln = 0.4;
+      if (P.hp <= 0) { P.hp = 0; P.dead = true; }
+      return true;
+    };
+
+    const SWING = [
+      { windup: 0.32, strike: 0.55 }, // u ranges
+      { windup: 0.30, strike: 0.55 },
+      { windup: 0.38, strike: 0.62 }
+    ];
+    P.update = function (dt, input, camYaw, time, game) {
+      const H = world.height;
+      P.invuln = Math.max(0, P.invuln - dt);
+      P.comboWindow = Math.max(0, P.comboWindow - dt);
+      P.hitFlash = Math.max(0, P.hitFlash - dt);
+
+      // movement
+      let mvx = 0, mvz = 0;
+      if (!P.dead) {
+        const f = M.fwdXZ(camYaw), r = M.rightXZ(camYaw);
+        let ix = 0, iz = 0;
+        if (input.k['KeyW']) iz += 1;
+        if (input.k['KeyS']) iz -= 1;
+        if (input.k['KeyA']) ix -= 1;
+        if (input.k['KeyD']) ix += 1;
+        const il = Math.hypot(ix, iz);
+        if (il > 0) {
+          ix /= il; iz /= il;
+          mvx = f[0] * iz + r[0] * ix;
+          mvz = f[1] * iz + r[1] * ix;
+        }
+      }
+      const sprint = input.k['ShiftLeft'] || input.k['ShiftRight'];
+      let spd = sprint ? 7.2 : 4.3;
+      if (P.attackT >= 0) spd *= 0.25;
+
+      if (P.rollT >= 0) {
+        P.rollT += dt;
+        const u = P.rollT / 0.5;
+        if (u >= 1) P.rollT = -1;
+        else {
+          const rs = 9.5 * (1 - u * 0.5);
+          mvx = P.rollDir[0]; mvz = P.rollDir[1];
+          P.pos[0] += mvx * rs * dt;
+          P.pos[2] += mvz * rs * dt;
+          // roll pose handled below via rollT
+        }
+      } else if (il > 0) {
+        P.pos[0] += mvx * spd * dt;
+        P.pos[2] += mvz * spd * dt;
+        P.vel[0] = mvx * spd; P.vel[1] = mvz * spd;
+      } else {
+        P.vel[0] = 0; P.vel[1] = 0;
+      }
+      P.speedSm = E.damp(P.speedSm, il > 0 ? spd : 0, 8, dt);
+
+      // clamp to world
+      const rr = Math.hypot(P.pos[0], P.pos[2]);
+      if (rr > 57) { P.pos[0] *= 57 / rr; P.pos[2] *= 57 / rr; }
+      // don't walk through castle gate area (simple block)
+      if (P.pos[2] < -44 && Math.abs(P.pos[0]) < 5) P.pos[2] = -44;
+
+      P.pos[1] = H(P.pos[0], P.pos[2]);
+      // face move dir
+      if (il > 0 && P.rollT < 0) {
+        const targetYaw = Math.atan2(-mvx, -mvz);
+        let dy2 = targetYaw - P.yaw;
+        while (dy2 > Math.PI) dy2 -= Math.PI * 2;
+        while (dy2 < -Math.PI) dy2 += Math.PI * 2;
+        P.yaw += dy2 * Math.min(1, 12 * dt);
+      }
+
+      // attack timeline
+      let moving = P.speedSm > 0.5;
+      const anim = { legs: 0, roll: P.rollT >= 0 ? P.rollT / 0.5 : -1 };
+      ch.clearPose();
+      if (P.attackT >= 0) {
+        P.attackT += dt;
+        const u = P.attackT / P.attackDur;
+        const sw = SWING[P.combo];
+        if (u >= 1) {
+          P.attackT = -1;
+          P.comboWindow = 0.55;
+        } else {
+          // damage window
+          if (!P.didHit && u >= sw.windup && u <= sw.strike) {
+            const fwd = M.fwdXZ(P.yaw);
+            P.attackInfo = {
+              origin: [P.pos[0], P.pos[1] + 1.2, P.pos[2]],
+              dir: fwd, range: 2.5, arc: 0.25,
+              dmg: [16, 18, 30][P.combo], kb: P.combo === 2 ? 7 : 2.5
+            };
+          } else if (u > sw.strike) P.attackInfo = null;
+          // sword trail record
+          const tipL = M.tpoint(ch.partWorld('sword'), [0, 1.02, 0]);
+          const baseL = M.tpoint(ch.partWorld('sword'), [0, 0.18, 0]);
+          if (u >= 0.12 && u <= 0.78) recordTrail(tipL, baseL, u);
+          // pose
+          poseSwing(u, P.combo);
+        }
+      } else {
+        P.attackInfo = null;
+        if (P.rollT >= 0) poseRoll(anim.roll);
+        else if (P.dead) poseDead();
+        else if (moving) poseLocomotion(time, P.speedSm / 7);
+        else poseIdle(time);
+      }
+      if (P.attackT < 0) fadeTrail(dt);
+
+      ch.computeWorld(P.pos[0], P.pos[1], P.pos[2], P.yaw);
+      P.capeUpdate(dt, time, ch.partWorld('torso'));
+      P.ch = ch;
+      P.moving = moving;
+
+      function poseIdle(t) {
+        ch.setPose('torso', Math.sin(t * 1.7) * 0.025, 0, 0);
+        ch.setPose('head', Math.sin(t * 0.6) * 0.06 - 0.05, Math.sin(t * 0.35) * 0.14, 0);
+        ch.setPose('armUL', Math.sin(t * 1.7) * 0.03, 0, 0.10 + Math.sin(t * 1.5) * 0.02);
+        ch.setPose('armUR', Math.sin(t * 1.7 + 1) * 0.03, 0, -0.12);
+        ch.setPose('armLL', 0, 0, 0.18);
+        ch.setPose('armLR', -0.35, 0, -0.25); // holds sword ready
+        ch.setPose('pelvis', 0, 0, 0, 0, Math.sin(t * 1.7) * 0.008, 0);
+      }
+      function poseLocomotion(t, k) {
+        const phase = t * (4.5 + k * 4.5);
+        const sw2 = Math.sin(phase), sw3 = Math.sin(phase + Math.PI);
+        const amp = 0.35 + k * 0.5;
+        ch.setPose('thighL', sw2 * amp - 0.1, 0, 0);
+        ch.setPose('thighR', sw3 * amp - 0.1, 0, 0);
+        ch.setPose('shinL', Math.max(0, -Math.sin(phase - 0.4)) * (0.5 + k * 0.6), 0, 0);
+        ch.setPose('shinR', Math.max(0, -Math.sin(phase + Math.PI - 0.4)) * (0.5 + k * 0.6), 0, 0);
+        ch.setPose('armUL', sw3 * amp * 0.55, 0, 0.12);
+        ch.setPose('armUR', sw2 * amp * 0.30 - 0.25, 0, -0.22);
+        ch.setPose('armLL', -0.3, 0, 0.15);
+        ch.setPose('armLR', -0.5, 0, -0.3);
+        ch.setPose('torso', 0.06 + k * 0.12, -sw2 * 0.06, 0);
+        ch.setPose('head', -0.04 - k * 0.08, 0, 0);
+        ch.setPose('pelvis', 0, 0, 0, 0, Math.abs(Math.sin(phase)) * 0.025, 0);
+      }
+      function poseRoll(u) {
+        const crouch = Math.sin(u * Math.PI);
+        ch.setPose('pelvis', 0.9 * crouch, 0, 0, 0, -0.35 * crouch, 0);
+        ch.setPose('torso', 0.6 * crouch, 0, 0);
+        ch.setPose('thighL', 1.3 * crouch, 0, 0);
+        ch.setPose('thighR', 1.1 * crouch, 0, 0);
+        ch.setPose('shinL', -1.2 * crouch + 1.2 * crouch, 0, 0);
+        ch.setPose('shinR', -1.0 * crouch + 1.0 * crouch, 0, 0);
+        ch.setPose('armUL', -0.8 * crouch, 0, 0.4);
+        ch.setPose('armUR', -0.8 * crouch, 0, -0.4);
+        ch.setPose('head', 0.3 * crouch, 0, 0);
+      }
+      function poseDead() {
+        ch.setPose('torso', 0.9, 0, 0);
+        ch.setPose('pelvis', 0.5, 0, 0, 0, -0.55, 0);
+        ch.setPose('thighL', -0.7, 0, 0);
+        ch.setPose('thighR', -0.5, 0, 0);
+        ch.setPose('shinL', 1.2, 0, 0);
+        ch.setPose('shinR', 1.0, 0, 0);
+        ch.setPose('armUL', -0.4, 0, 0.8);
+        ch.setPose('armUR', -0.4, 0, -0.8);
+        ch.setPose('head', 0.6, 0, 0);
+      }
+      function poseSwing(u, combo) {
+        const w = SWING[combo];
+        const windup = E.smooth(u / w.windup);
+        const strike = E.smooth((u - w.windup) / (w.strike - w.windup));
+        const recover = E.smooth((u - w.strike) / (1 - w.strike));
+        if (combo === 0) {
+          ch.setPose('torso', 0, E.lerp(E.lerp(-0.85, 0.75, strike), 0, recover), 0);
+          ch.setPose('armUR', E.lerp(E.lerp(-2.4, 0.5, strike), -0.3, recover), 0, E.lerp(-0.5, -0.15, strike));
+          ch.setPose('armLR', E.lerp(E.lerp(-0.4, 0.2, strike), -0.35, recover), 0, 0);
+          ch.setPose('armUL', E.lerp(0.4 * windup, -0.3, strike), 0, 0.35);
+          ch.setPose('handR', E.lerp(-0.6, 0.4, strike), 0, 0);
+        } else if (combo === 1) {
+          ch.setPose('torso', 0.1, E.lerp(E.lerp(0.9, -0.75, strike), 0, recover), 0);
+          ch.setPose('armUR', E.lerp(E.lerp(-0.6, -1.9, strike), -0.3, recover), 0, E.lerp(-1.1, -0.2, strike));
+          ch.setPose('armLR', E.lerp(0.6, 0.15, strike), 0, 0);
+          ch.setPose('armUL', E.lerp(-0.5, 0.3, strike), 0, 0.3);
+          ch.setPose('handR', E.lerp(0.5, -0.3, strike), 0, 0);
+        } else {
+          const raise = E.smooth(u / 0.38);
+          ch.setPose('torso', E.lerp(E.lerp(-0.35 * raise, 0.45, strike), 0.1, recover), 0, 0);
+          ch.setPose('armUR', E.lerp(E.lerp(-2.9 * raise, 0.9, strike), -0.3, recover), 0, -0.1);
+          ch.setPose('armUL', E.lerp(E.lerp(-2.6 * raise, 0.7, strike), 0, recover), 0, 0.15);
+          ch.setPose('armLR', 0, 0, 0);
+          ch.setPose('armLL', 0, 0, 0);
+          ch.setPose('thighL', -0.25 * strike * (1 - recover), 0, 0);
+          ch.setPose('thighR', 0.35 * strike * (1 - recover), 0, 0);
+          ch.setPose('pelvis', 0, 0, 0, 0, -0.12 * strike * (1 - recover), 0);
+        }
+        // legs keep locomotion blend
+        const phase = time2();
+        const sw2 = Math.sin(phase) * 0.12;
+        ch.setPose('thighL', sw2 - 0.05, 0, 0);
+        ch.setPose('thighR', -sw2 - 0.05, 0, 0);
+      }
+      function time2() { return game.time * 6 * Math.min(1, P.speedSm / 4); }
+    };
+
+    // sword trail
+    let trailList = [];
+    function recordTrail(tip, base, u) {
+      trailList.push([tip, base]);
+      if (trailList.length > 14) trailList.shift();
+      rebuildTrail();
+    }
+    function fadeTrail(dt) {
+      if (trailList.length) { trailList.shift(); trailList.shift(); rebuildTrail(); }
+      if (trailList.length > 6) trailList.splice(0, trailList.length - 6);
+    }
+    function rebuildTrail() {
+      const d = P.trailData;
+      const n = Math.min(trailList.length, 16);
+      for (let i = 0; i < n; i++) {
+        const a = 1 - i / n;
+        const t = trailList[trailList.length - 1 - i];
+        const o = i * 8;
+        d[o] = t[0][0]; d[o + 1] = t[0][1]; d[o + 2] = t[0][2]; d[o + 3] = a * 0.85;
+        d[o + 4] = t[1][0]; d[o + 5] = t[1][1]; d[o + 6] = t[1][2]; d[o + 7] = a * 0.25;
+      }
+      P.trailCount = n * 2;
+    }
+    P.trail = function () { return { data: P.trailData, count: P.trailCount }; };
+
+    P.draws = function (list) { ch.buildDraws(list); P.capeDraw(list); };
+    return P;
+  };
+})(window.E = window.E || {});
+
+
+(function (E) {
+  // ============ EMBERFALL :: 06b_wizard_wraith.js ============
+  const M = E.M;
+  const qe = E.qe;
+
+  // -------- WIZARD (narrator) --------
+  E.Wizard = function (world) {
+    const ch = E.buildWizard();
+    const x = E.WORLD.STONES[0], z = E.WORLD.STONES[1] - 6.5;
+    const Wz = {
+      ch: ch, pos: [x, world.height(x, z), z], yaw: Math.PI - 0.1,
+      castT: -1, castDur: 4.2, orbFlare: 0.35, lightIntensity: 8
+    };
+    Wz.cast = function () { Wz.castT = 0; };
+    Wz.update = function (dt, time) {
+      ch.clearPose();
+      // idle breathing + robe sway
+      ch.setPose('torso', Math.sin(time * 1.1) * 0.03, Math.sin(time * 0.23) * 0.08, 0, 0, Math.sin(time * 1.1) * 0.006, 0);
+      ch.setPose('head', Math.sin(time * 0.7) * 0.05, Math.sin(time * 0.31) * 0.2, 0);
+      ch.setPose('armL', Math.sin(time * 1.1 + 1) * 0.04, 0, 0.18);
+      let flare = 0.35 + 0.15 * Math.sin(time * 2.0);
+      if (Wz.castT >= 0) {
+        Wz.castT += dt;
+        const t = Wz.castT;
+        if (t < 1.2) {
+          const u = E.smooth(t / 1.2);
+          ch.setPose('armR', -u * 2.4, 0, -u * 0.5);
+          flare = 0.35 + u * 2.6;
+          Wz.lightIntensity = 8 + u * 42;
+        } else if (t < 3.2) {
+          ch.setPose('armR', -2.4 + Math.sin(t * 3) * 0.05, 0, -0.5);
+          flare = 2.95 + Math.sin(t * 5) * 0.35;
+          Wz.lightIntensity = 50 + Math.sin(t * 4) * 8;
+        } else if (t < Wz.castDur) {
+          const u = E.smooth((t - 3.2) / (Wz.castDur - 3.2));
+          ch.setPose('armR', -2.4 * (1 - u), 0, -0.5 * (1 - u));
+          flare = 2.95 * (1 - u) + 0.35 * u;
+          Wz.lightIntensity = 8 + 42 * (1 - u);
+        } else { Wz.castT = -1; Wz.lightIntensity = 8; }
+        ch.setPose('head', -0.3, 0, 0);
+      } else {
+        ch.setPose('armR', Math.sin(time * 1.1) * 0.04 - 0.06, 0, -0.12);
+        Wz.lightIntensity = E.damp(Wz.lightIntensity, 8, 3, dt);
+      }
+      ch.parts.orb.tint[3] = flare;
+      ch.computeWorld(Wz.pos[0], Wz.pos[1], Wz.pos[2], Wz.yaw);
+    };
+    Wz.draws = function (list) { ch.buildDraws(list); };
+    Wz.staffTip = function () { return M.tpoint(ch.partWorld('orb'), [0, 0, 0]); };
+    return Wz;
+  };
+
+  // -------- WRAITH (enemy) --------
+  let WRAITH_SEQ = 0;
+  E.Wraith = function (world, pos, isBrute) {
+    const ch = E.buildWraith();
+    const hpMax = isBrute ? 130 : 42;
+    const W = {
+      id: ++WRAITH_SEQ, ch: ch, pos: pos.slice(), yaw: 0,
+      hp: hpMax, hpMax: hpMax, brute: !!isBrute,
+      state: 'rise', stateT: 0, bob: Math.random() * 6.28,
+      speed: isBrute ? 2.5 : 3.3 + Math.random() * 0.5,
+      dmg: isBrute ? 18 : 10, didHit: false,
+      dying: false, dead: false, scaleT: isBrute ? 1.5 : 1.0,
+      target: null, targetPos: null
+    };
+    ch.scale = W.scaleT;
+    W.takeDamage = function (dmg, kb, dir) {
+      if (W.dying || W.state === 'rise') return false;
+      W.hp -= dmg;
+      if (dir) {
+        W.pos[0] += dir[0] * kb; W.pos[2] += dir[1] * kb;
+      }
+      if (W.hp <= 0) {
+        W.dying = true; W.state = 'dying'; W.stateT = 0;
+        return 'killed';
+      }
+      W.state = 'stagger'; W.stateT = 0;
+      return 'hit';
+    };
+    W.update = function (dt, time, game) {
+      const H = world.height;
+      W.stateT += dt;
+      ch.clearPose();
+      const bobY = Math.sin(time * 2.4 + W.bob) * 0.12 + 0.15;
+
+      if (W.state === 'rise') {
+        const u = E.clamp(W.stateT / 1.0, 0, 1);
+        ch.scale = W.scaleT * u;
+        if (W.stateT > 1.0) { W.state = 'chase'; W.stateT = 0; ch.scale = W.scaleT; }
+      } else if (W.state === 'dying') {
+        const u = W.stateT / 1.1;
+        ch.scale = W.scaleT * Math.max(0, 1 - u);
+        ch.parts.eyes.tint[3] = 1.7 * (1 - u);
+        if (u >= 1) { W.dead = true; ch.visible = false; }
+      } else if (W.state === 'stagger') {
+        if (W.stateT > 0.32) { W.state = 'chase'; W.stateT = 0; }
+      } else if (W.state === 'chase') {
+        // pick target: player if close, else castle gate
+        const pp = game.player.pos;
+        const dp = Math.hypot(pp[0] - W.pos[0], pp[2] - W.pos[2]);
+        let tx, tz;
+        if (dp < 13 || W.brute) { tx = pp[0]; tz = pp[2]; W.target = 'player'; }
+        else { tx = E.WORLD.GATE[0]; tz = E.WORLD.GATE[1] - 1.5; W.target = 'castle'; }
+        const dx = tx - W.pos[0], dz = tz - W.pos[2];
+        const d = Math.hypot(dx, dz) || 1;
+        W.yaw = Math.atan2(-dx / d, -dz / d);
+        const reach = W.target === 'player' ? 1.7 : 3.2;
+        if (d > reach) {
+          let mx = dx / d * W.speed, mz = dz / d * W.speed;
+          // separation from other wraiths
+          for (const o of game.enemies) {
+            if (o === W || o.dead || o.dying) continue;
+            const ox = W.pos[0] - o.pos[0], oz = W.pos[2] - o.pos[2];
+            const od = Math.hypot(ox, oz);
+            if (od < 1.6 && od > 0.001) { mx += ox / od * 2.0; mz += oz / od * 2.0; }
+          }
+          W.pos[0] += mx * dt; W.pos[2] += mz * dt;
+        } else {
+          W.state = 'windup'; W.stateT = 0; W.didHit = false;
+        }
+        // float glide pose
+        ch.setPose('robe', Math.sin(time * 2.4 + W.bob) * 0.05, 0, 0);
+        ch.setPose('armL', -0.5 + Math.sin(time * 2.1 + W.bob) * 0.15, 0, 0.25);
+        ch.setPose('armR', -0.5 + Math.cos(time * 1.9 + W.bob) * 0.15, 0, -0.25);
+        ch.setPose('head', Math.sin(time * 1.4 + W.bob) * 0.07, 0, 0);
+      } else if (W.state === 'windup') {
+        ch.setPose('armL', -2.2, 0, 0.5);
+        ch.setPose('armR', -2.2, 0, -0.5);
+        ch.setPose('head', -0.25, 0, 0);
+        ch.parts.eyes.tint[3] = 1.7 + W.stateT * 2.0;
+        if (W.stateT > 0.5) { W.state = 'strike'; W.stateT = 0; }
+      } else if (W.state === 'strike') {
+        const u = E.smooth(W.stateT / 0.22);
+        ch.setPose('armL', E.lerp(-2.2, -0.3, u), 0, E.lerp(0.5, 0.2, u));
+        ch.setPose('armR', E.lerp(-2.2, -0.3, u), 0, E.lerp(-0.5, -0.2, u));
+        ch.setPose('robe', 0.18 * u, 0, 0, 0, 0, 0.3 * u);
+        if (!W.didHit && W.stateT > 0.10) {
+          W.didHit = true;
+          if (W.target === 'player') {
+            const pp = game.player.pos;
+            if (Math.hypot(pp[0] - W.pos[0], pp[2] - W.pos[2]) < 2.2) {
+              game.hurtPlayer(W.dmg, W.pos);
+            }
+          } else {
+            game.hurtCastle(W.dmg, W.pos);
+          }
+        }
+        if (W.stateT > 0.3) { W.state = 'recover'; W.stateT = 0; }
+      } else if (W.state === 'recover') {
+        if (W.stateT > 0.7) { W.state = 'chase'; W.stateT = 0; }
+      }
+      // keep in world
+      const rr = Math.hypot(W.pos[0], W.pos[2]);
+      if (rr > 58) { W.pos[0] *= 58 / rr; W.pos[2] *= 58 / rr; }
+      W.pos[1] = H(W.pos[0], W.pos[2]) + bobY * (W.state === 'rise' ? 0 : 1);
+      ch.computeWorld(W.pos[0], W.pos[1] - bobY, W.pos[2], W.yaw);
+    };
+    W.draws = function (list) {
+      if (W.dead) return;
+      ch.buildDraws(list);
+    };
+    return W;
+  };
+})(window.E = window.E || {});
+
+
+(function (E) {
+  // ============ EMBERFALL :: 07_audio.js ============
+  // Fully procedural adaptive score + SFX + narrator (WebAudio, no assets).
+  E.AudioSys = function () {
+    let ctx = null, master = null, musicBus = null, sfxBus = null, reverb = null;
+    let mode = 'cine', running = false, nextStep = 0, stepIdx = 0;
+    const A = { enabled: false };
+
+    function now() { return ctx.currentTime; }
+
+    A.init = function () {
+      if (ctx) return;
+      try {
+        ctx = new (window.AudioContext || window.webkitAudioContext)();
+      } catch (e) { E.log('AudioContext unavailable'); return; }
+      master = ctx.createGain(); master.gain.value = 0.85;
+      const comp = ctx.createDynamicsCompressor();
+      comp.threshold.value = -18; comp.ratio.value = 6;
+      master.connect(comp); comp.connect(ctx.destination);
+      musicBus = ctx.createGain(); musicBus.gain.value = 0.8; musicBus.connect(master);
+      sfxBus = ctx.createGain(); sfxBus.gain.value = 0.95; sfxBus.connect(master);
+      // generated impulse reverb
+      const len = ctx.sampleRate * 2.6;
+      const ir = ctx.createBuffer(2, len, ctx.sampleRate);
+      for (let c = 0; c < 2; c++) {
+        const d = ir.getChannelData(c);
+        for (let i = 0; i < len; i++) {
+          d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2.6) * 0.5;
+        }
+      }
+      reverb = ctx.createConvolver(); reverb.buffer = ir;
+      const revGain = ctx.createGain(); revGain.gain.value = 0.42;
+      reverb.connect(revGain); revGain.connect(master);
+      A.enabled = true;
+      A.revIn = reverb;
+      E.log('Audio engine online (procedural score ready)');
+    };
+
+    A.resume = function () { if (ctx && ctx.state === 'suspended') ctx.resume(); };
+
+    A.setMuted = function (m) { if (master) master.gain.value = m ? 0 : 0.85; };
+
+    // ---------- helpers ----------
+    function env(g, t, a, peak, d, sus, r) {
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.linearRampToValueAtTime(peak, t + a);
+      if (d) g.gain.exponentialRampToValueAtTime(Math.max(sus, 0.0001), t + a + d);
+      if (r) g.gain.exponentialRampToValueAtTime(0.0001, t + a + d + r);
+    }
+    function osc(type, freq, t0, dur, dest, peak, att, rel, detune) {
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = type; o.frequency.value = freq;
+      if (detune) o.detune.value = detune;
+      env(g, t0, att || 0.01, peak, 0, 0, rel || 0.2);
+      o.connect(g); g.connect(dest);
+      o.start(t0); o.stop(t0 + (att || 0.01) + (rel || 0.2) + 0.1);
+      return { o: o, g: g };
+    }
+    function noiseBurst(t0, dur, dest, peak, filterFreq, type, q) {
+      const n = ctx.createBufferSource();
+      const buf = ctx.createBuffer(1, Math.ceil(ctx.sampleRate * dur), ctx.sampleRate);
+      const d = buf.getChannelData(0);
+      for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+      n.buffer = buf;
+      const f = ctx.createBiquadFilter();
+      f.type = type || 'bandpass'; f.frequency.value = filterFreq; f.Q.value = q || 1;
+      const g = ctx.createGain();
+      env(g, t0, 0.005, peak, 0, 0, dur);
+      n.connect(f); f.connect(g); g.connect(dest);
+      n.start(t0);
+      return f;
+    }
+
+    // ---------- music sequencer ----------
+    // D minor progression: Dm - Bb - F - C  (i VI III VII) — dark, nostalgic
+    const CHORDS = [[146.83, 174.61, 220.0], [116.54, 146.83, 174.61], [174.61, 220.0, 261.63], [130.81, 164.81, 196.0]];
+    const ARP = [0, 1, 2, 1, 0, 2, 1, 2];
+    const LEAD = [587.33, 0, 523.25, 587.33, 0, 440.0, 0, 349.23];
+    let battle = false;
+
+    function musicStep(t) {
+      const bar = Math.floor(stepIdx / 8) % 4;
+      const beat = stepIdx % 8;
+      const chord = CHORDS[bar];
+      // sustained pad every 2 bars
+      if (beat === 0) {
+        for (const f of chord) {
+          for (const det of [-4, 3]) {
+            const o = ctx.createOscillator(), g = ctx.createGain(), fl = ctx.createBiquadFilter();
+            o.type = 'sawtooth'; o.frequency.value = f / 2; o.detune.value = det;
+            fl.type = 'lowpass'; fl.frequency.value = battle ? 900 : 520; fl.Q.value = 0.6;
+            const dur = battle ? 2.2 : 4.2;
+            env(g, t, 1.2, 0.05, 0, 0.035, dur);
+            o.connect(fl); fl.connect(g); g.connect(musicBus);
+            const r = ctx.createGain(); r.gain.value = 0.5; g.connect(r); r.connect(reverb);
+            o.start(t); o.stop(t + 6);
+          }
+        }
+        // deep choir root
+        const c = ctx.createOscillator(), cg = ctx.createGain();
+        c.type = 'sine'; c.frequency.value = chord[0] / 4;
+        env(cg, t, 1.4, 0.12, 0, 0.1, 2.8);
+        c.connect(cg); cg.connect(musicBus);
+        c.start(t); c.stop(t + 6);
+      }
+      // harp arp
+      const stepDur = battle ? 0.24 : 0.5;
+      const note = chord[ARP[beat]] * (beat % 3 === 2 ? 2 : 1);
+      const h = osc('triangle', note, t, stepDur, musicBus, battle ? 0.05 : 0.075, 0.005, 0.9);
+      const hr = ctx.createGain(); hr.gain.value = 0.6; h.g.connect(hr); hr.connect(reverb);
+      // sparse bell
+      if (!battle && stepIdx % 16 === 6) {
+        const b = osc('sine', chord[2] * 4, t, 0.1, musicBus, 0.03, 0.005, 2.4);
+      }
+      // battle drums
+      if (battle) {
+        if (beat === 0 || beat === 3 || beat === 6) { // taiko
+          const o = ctx.createOscillator(), g = ctx.createGain();
+          o.type = 'sine';
+          o.frequency.setValueAtTime(160, t);
+          o.frequency.exponentialRampToValueAtTime(48, t + 0.12);
+          env(g, t, 0.003, 0.5, 0, 0, 0.25);
+          o.connect(g); g.connect(musicBus); g.connect(reverb);
+          o.start(t); o.stop(t + 0.4);
+          noiseBurst(t, 0.09, musicBus, 0.12, 300, 'lowpass', 0.5);
+        }
+        if (beat === 2 || beat === 5) noiseBurst(t, 0.05, musicBus, 0.06, 2400, 'highpass', 0.7);
+      }
+      stepIdx++;
+    }
+
+    A.start = function () {
+      if (!A.enabled || running) return;
+      running = true;
+      nextStep = now() + 0.1;
+      setInterval(function () {
+        if (!running || E.PARAMS.mute) return;
+        const stepDur = battle ? 0.24 : 0.5;
+        while (nextStep < now() + 0.25) {
+          musicStep(nextStep);
+          nextStep += stepDur;
+        }
+      }, 60);
+    };
+    A.setMode = function (m) {
+      mode = m;
+      battle = (m === 'battle');
+      if (musicBus) musicBus.gain.setTargetAtTime(m === 'cine' ? 0.55 : 0.8, now(), 1.2);
+    };
+
+    // ---------- SFX ----------
+    A.swordSwing = function (combo) {
+      if (!A.enabled) return;
+      const t = now();
+      const f = noiseBurst(t, 0.16, sfxBus, 0.22, 900 + combo * 500, 'bandpass', 1.4);
+      f.frequency.exponentialRampToValueAtTime(2200 + combo * 400, t + 0.12);
+    };
+    A.swordHit = function (strong) {
+      if (!A.enabled) return;
+      const t = now();
+      noiseBurst(t, 0.12, sfxBus, 0.3, 2600, 'bandpass', 2.2);
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = 'square';
+      o.frequency.setValueAtTime(220, t);
+      o.frequency.exponentialRampToValueAtTime(70, t + 0.09);
+      env(g, t, 0.002, 0.16, 0, 0, 0.12);
+      o.connect(g); g.connect(sfxBus);
+      o.start(t); o.stop(t + 0.2);
+      if (strong) { noiseBurst(t + 0.02, 0.3, reverb, 0.1, 500, 'lowpass', 0.5); }
+    };
+    A.wraithHit = function () {
+      if (!A.enabled) return;
+      const t = now();
+      noiseBurst(t, 0.2, sfxBus, 0.2, 500, 'bandpass', 0.8);
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = 'sawtooth';
+      o.frequency.setValueAtTime(300, t);
+      o.frequency.exponentialRampToValueAtTime(60, t + 0.25);
+      env(g, t, 0.005, 0.12, 0, 0, 0.3);
+      o.connect(g); g.connect(sfxBus); g.connect(reverb);
+      o.start(t); o.stop(t + 0.4);
+    };
+    A.wraithDie = function () {
+      if (!A.enabled) return;
+      const t = now();
+      for (let i = 0; i < 3; i++) {
+        const o = ctx.createOscillator(), g = ctx.createGain();
+        o.type = 'sine';
+        o.frequency.setValueAtTime(700 + i * 300, t);
+        o.frequency.exponentialRampToValueAtTime(120 + i * 40, t + 0.6);
+        env(g, t + i * 0.04, 0.01, 0.07, 0, 0, 0.7);
+        o.connect(g); g.connect(reverb); g.connect(sfxBus);
+        o.start(t); o.stop(t + 1);
+      }
+      noiseBurst(t, 0.4, sfxBus, 0.1, 1200, 'bandpass', 0.6);
+    };
+    A.wraithSpawn = function () {
+      if (!A.enabled) return;
+      const t = now();
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = 'sawtooth';
+      o.frequency.setValueAtTime(50, t);
+      o.frequency.exponentialRampToValueAtTime(180, t + 0.8);
+      env(g, t, 0.3, 0.1, 0, 0.05, 0.6);
+      o.connect(g); g.connect(sfxBus); g.connect(reverb);
+      o.start(t); o.stop(t + 1.2);
+    };
+    A.playerHurt = function () {
+      if (!A.enabled) return;
+      const t = now();
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = 'triangle';
+      o.frequency.setValueAtTime(110, t);
+      o.frequency.exponentialRampToValueAtTime(45, t + 0.18);
+      env(g, t, 0.004, 0.4, 0, 0, 0.25);
+      o.connect(g); g.connect(sfxBus);
+      o.start(t); o.stop(t + 0.4);
+      noiseBurst(t, 0.1, sfxBus, 0.15, 200, 'lowpass', 0.4);
+    };
+    A.castleHit = function () {
+      if (!A.enabled) return;
+      const t = now();
+      noiseBurst(t, 0.3, sfxBus, 0.3, 120, 'lowpass', 0.4);
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = 'sine';
+      o.frequency.setValueAtTime(70, t);
+      o.frequency.exponentialRampToValueAtTime(32, t + 0.3);
+      env(g, t, 0.005, 0.45, 0, 0, 0.45);
+      o.connect(g); g.connect(sfxBus);
+      o.start(t); o.stop(t + 0.6);
+    };
+    A.roll = function () {
+      if (!A.enabled) return;
+      noiseBurst(now(), 0.22, sfxBus, 0.1, 700, 'bandpass', 0.7);
+    };
+    A.step = function () {
+      if (!A.enabled) return;
+      noiseBurst(now(), 0.05, sfxBus, 0.035, 400, 'lowpass', 0.3);
+    };
+    A.horn = function () {
+      if (!A.enabled) return;
+      const t = now();
+      for (const f of [146.83, 220.0]) {
+        const o = ctx.createOscillator(), g = ctx.createGain();
+        o.type = 'sawtooth'; o.frequency.value = f;
+        env(g, t, 0.25, 0.11, 0, 0.08, 1.4);
+        o.connect(g); g.connect(musicBus); g.connect(reverb);
+        o.start(t); o.stop(t + 2);
+      }
+    };
+    A.staffFlare = function () {
+      if (!A.enabled) return;
+      const t = now();
+      for (let i = 0; i < 4; i++) {
+        const o = ctx.createOscillator(), g = ctx.createGain();
+        o.type = 'sine';
+        o.frequency.setValueAtTime(300 * Math.pow(1.5, i), t);
+        o.frequency.linearRampToValueAtTime(320 * Math.pow(1.5, i), t + 1.6);
+        env(g, t, 0.6, 0.05, 0, 0.04, 1.4);
+        o.connect(g); g.connect(musicBus); g.connect(reverb);
+        o.start(t); o.stop(t + 2.6);
+      }
+      noiseBurst(t + 0.5, 1.2, reverb, 0.04, 3000, 'highpass', 0.5);
+    };
+    A.victory = function () {
+      if (!A.enabled) return;
+      const t = now();
+      const notes = [293.66, 349.23, 440.0, 587.33];
+      notes.forEach(function (f, i) {
+        const o = ctx.createOscillator(), g = ctx.createGain();
+        o.type = 'triangle'; o.frequency.value = f;
+        env(g, t + i * 0.28, 0.05, 0.12, 0, 0.06, 1.8);
+        o.connect(g); g.connect(musicBus); g.connect(reverb);
+        o.start(t + i * 0.28); o.stop(t + i * 0.28 + 2.5);
+      });
+    };
+    A.defeat = function () {
+      if (!A.enabled) return;
+      const t = now();
+      const notes = [220.0, 174.61, 146.83, 110.0];
+      notes.forEach(function (f, i) {
+        const o = ctx.createOscillator(), g = ctx.createGain();
+        o.type = 'sawtooth'; o.frequency.value = f / 2;
+        env(g, t + i * 0.4, 0.1, 0.1, 0, 0.05, 2.2);
+        o.connect(g); g.connect(musicBus); g.connect(reverb);
+        o.start(t + i * 0.4); o.stop(t + i * 0.4 + 3);
+      });
+    };
+
+    // narrator: mystical murmuring + optional speech synthesis
+    A.narrate = function (text, durSec) {
+      if (!A.enabled) return;
+      const t = now();
+      // elder voice bed: slow wobbly low tones following the sentence
+      const words = Math.max(3, text.split(' ').length);
+      for (let i = 0; i < words; i++) {
+        const tt = t + (durSec * i) / words;
+        const o = ctx.createOscillator(), g = ctx.createGain(), f = ctx.createBiquadFilter();
+        o.type = 'sawtooth';
+        o.frequency.setValueAtTime(85 + Math.random() * 60, tt);
+        o.frequency.linearRampToValueAtTime(70 + Math.random() * 50, tt + 0.4);
+        f.type = 'lowpass'; f.frequency.value = 240; f.Q.value = 3;
+        env(g, tt, 0.12, 0.05, 0, 0.02, 0.3);
+        o.connect(f); f.connect(g); g.connect(reverb);
+        const dg = ctx.createGain(); dg.gain.value = 0.4; g.connect(dg); dg.connect(sfxBus);
+        o.start(tt); o.stop(tt + 0.6);
+      }
+      try {
+        if (window.speechSynthesis && !E.PARAMS.mute) {
+          const u = new SpeechSynthesisUtterance(text);
+          u.rate = 0.78; u.pitch = 0.32; u.volume = 0.95;
+          const voices = speechSynthesis.getVoices();
+          for (const v of voices) {
+            if (/en[-_]?(GB|US)/i.test(v.lang) && /male|daniel|david|george|fred/i.test(v.name)) { u.voice = v; break; }
+          }
+          speechSynthesis.speak(u);
+        }
+      } catch (e) { /* TTS unavailable — subtitles carry the narration */ }
+    };
+    A.stopNarration = function () {
+      try { if (window.speechSynthesis) speechSynthesis.cancel(); } catch (e) {}
+    };
+    return A;
+  };
+})(window.E = window.E || {});
+
+
+(function (E) {
+  // ============ EMBERFALL :: 08_ui.js ============
+  E.UI = {
+    el: {},
+    init: function () {
+      const ids = ['title', 'titleEnter', 'hud', 'hpFill', 'castleFill', 'waveNum', 'kills',
+        'subtitle', 'subtitleName', 'subtitleText', 'banner', 'bannerTitle', 'bannerSub',
+        'vignette', 'letterTop', 'letterBottom', 'pause', 'defeat', 'victory', 'fadeBlack',
+        'dmgflash', 'hint', 'bossFillWrap'];
+      for (const id of ids) this.el[id] = document.getElementById(id);
+      const t = this.el;
+      if (t.titleEnter) {
+        // breathing glow
+        let on = true;
+        setInterval(function () { t.titleEnter.style.opacity = on ? 0.55 : 1; on = !on; }, 900);
+      }
+    },
+    showTitle: function (show) {
+      this.el.title.style.display = show ? 'flex' : 'none';
+    },
+    showHud: function (show) {
+      this.el.hud.style.display = show ? 'block' : 'none';
+    },
+    showScreen: function (name) {
+      this.el.pause.style.display = name === 'pause' ? 'flex' : 'none';
+      this.el.defeat.style.display = name === 'defeat' ? 'flex' : 'none';
+      this.el.victory.style.display = name === 'victory' ? 'flex' : 'none';
+    },
+    setHP: function (pct) {
+      this.el.hpFill.style.width = Math.max(0, pct * 100) + '%';
+      this.el.hpFill.classList.toggle('low', pct < 0.35);
+    },
+    setCastle: function (pct) {
+      this.el.castleFill.style.width = Math.max(0, pct * 100) + '%';
+      this.el.castleFill.classList.toggle('low', pct < 0.35);
+    },
+    setWave: function (n, total) {
+      const roman = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII'][n - 1] || n;
+      this.el.waveNum.textContent = 'WAVE ' + roman;
+    },
+    setKills: function (n) { this.el.kills.textContent = n; },
+    subtitle: function (name, text, dur) {
+      const s = this.el.subtitle;
+      this.el.subtitleName.textContent = name || '';
+      this.el.subtitleText.textContent = text;
+      s.style.opacity = 1;
+      clearTimeout(this._subT);
+      this._subT = setTimeout(function () { s.style.opacity = 0; }, (dur || 5) * 1000);
+    },
+    hideSubtitle: function () {
+      this.el.subtitle.style.opacity = 0;
+    },
+    banner: function (title, sub, dur) {
+      const b = this.el.banner;
+      this.el.bannerTitle.textContent = title;
+      this.el.bannerSub.textContent = sub || '';
+      b.classList.remove('show');
+      void b.offsetWidth; // restart animation
+      b.classList.add('show');
+      clearTimeout(this._banT);
+      this._banT = setTimeout(function () { b.classList.remove('show'); }, (dur || 3.6) * 1000);
+    },
+    letterbox: function (on) {
+      this.el.letterTop.style.transform = on ? 'scaleY(1)' : 'scaleY(0)';
+      this.el.letterBottom.style.transform = on ? 'scaleY(1)' : 'scaleY(0)';
+    },
+    hint: function (text) {
+      this.el.hint.textContent = text || '';
+    },
+    fade: function (black, instant) {
+      const f = this.el.fadeBlack;
+      if (instant) { f.style.transition = 'none'; f.style.opacity = black ? 1 : 0; void f.offsetWidth; f.style.transition = ''; return; }
+      f.style.opacity = black ? 1 : 0;
+    },
+    flash: function () {
+      const d = this.el.dmgflash;
+      d.classList.remove('on');
+      void d.offsetWidth;
+      d.classList.add('on');
+    }
+  };
+})(window.E = window.E || {});
+
+
+(function (E) {
+  // ============ EMBERFALL :: 09_main.js ============
+  const M = E.M;
+  const MOON = (function () {
+    const v = [-0.42, 0.52, -0.72], l = Math.hypot(v[0], v[1], v[2]);
+    return [v[0] / l, v[1] / l, v[2] / l];
+  })();
+
+  let renderer, world, player, wizard, particles, audio, UI = E.UI;
+  let state = 'boot', time = 0, introT = 0, playT = 0;
+  let enemies = [], kills = 0;
+  let castleHp = 500, castleHpMax = 500;
+  let waveIdx = 0, waveState = 'idle', waveTimer = 0, spawnQueue = 0, spawnTimer = 0;
+  const WAVES = [
+    { n: 5, brutes: 0, name: 'I', sub: 'The Veil Thins' },
+    { n: 8, brutes: 0, name: 'II', sub: 'Whispers in the Mist' },
+    { n: 11, brutes: 1, name: 'III', sub: 'The Hollow March' },
+    { n: 14, brutes: 2, name: 'IV', sub: 'Shadows of the Fallen King' },
+    { n: 18, brutes: 3, name: 'V', sub: 'The Final Night' }
+  ];
+  const cam = { yaw: 2.6, pitch: 0.18, dist: 5.4, eye: [0, 3, 20], target: [0, 1, 10], shake: 0, fov: 52 };
+  let camOverride = null, nostalgia = 0;
+
+  const input = { k: {} };
+  let fpsAcc = 0, fpsN = 0, fps = 60;
+
+  // ================= INTRO CINEMATIC =================
+  const CINE = [
+    { t: 0.0, eye: [17, 4.2, 29], look: [0, 2.2, 10], fov: 50 },
+    { t: 6.4, eye: [4.6, 2.6, 6.8], look: [0, 1.8, -2.4], fov: 46 },
+    { t: 6.5, eye: [-3.5, 1.7, -0.1], look: [0.2, 1.55, -2.5], fov: 40 },   // cut
+    { t: 12.9, eye: [-4.6, 2.5, 2.0], look: [0, 1.62, -2.5], fov: 40 },
+    { t: 13.0, eye: [-5.5, 2.8, 3.2], look: [0, 1.7, -2.5], fov: 42 },      // cut
+    { t: 18.9, eye: [-7.5, 4.2, 8.0], look: [0, 5.0, -52], fov: 48 },
+    { t: 19.0, eye: [15, 8.5, -27], look: [0, 9.0, -62], fov: 50 },         // cut
+    { t: 25.9, eye: [9, 5.5, -22], look: [0, 6.5, -58], fov: 50 },
+    { t: 26.0, eye: [2.6, 2.15, 17.2], look: [0.4, 1.35, 12], fov: 46 },    // cut
+    { t: 32.4, eye: [2.2, 1.95, 15.6], look: [0, 1.3, 11.2], fov: 46 }
+  ];
+  const SUBS = [
+    { t: 0.8, name: '', text: 'The Hollow Moon rises over Aldervale... and the old dark stirs beneath its pale light.', d: 5.2 },
+    { t: 7.0, name: 'Magister Eldrin', text: 'Your goal is to protect your kingdom and fight those who try to take it over.', d: 5.4 },
+    { t: 13.5, name: 'Magister Eldrin', text: 'Within the keep burns the Ember Heart — the last flame of the old world. While it endures, Aldervale endures.', d: 5.2 },
+    { t: 19.5, name: 'Magister Eldrin', text: 'They are coming, Warden. The Hollow King sends his legion to snuff it out.', d: 5.2 },
+    { t: 26.6, name: 'Magister Eldrin', text: 'Take up your blade. Stand, and let them break upon you like waves upon stone.', d: 5.2 }
+  ];
+  let subIdx = 0, lastResolvedAttack = null, castFired = false;
+
+  function evalCine(t) {
+    let a = CINE[0], b = CINE[CINE.length - 1];
+    for (let i = 0; i < CINE.length - 1; i++) {
+      if (t >= CINE[i].t && t <= CINE[i + 1].t) { a = CINE[i]; b = CINE[i + 1]; break; }
+    }
+    const span = Math.max(0.001, b.t - a.t);
+    let u = E.smooth((t - a.t) / span);
+    if (a.fov !== b.fov && (b.eye[0] !== a.eye[0])) { /* smooth */ }
+    return {
+      eye: [E.lerp(a.eye[0], b.eye[0], u), E.lerp(a.eye[1], b.eye[1], u), E.lerp(a.eye[2], b.eye[2], u)],
+      look: [E.lerp(a.look[0], b.look[0], u), E.lerp(a.look[1], b.look[1], u), E.lerp(a.look[2], b.look[2], u)],
+      fov: E.lerp(a.fov, b.fov, u)
+    };
+  }
+
+  // ================= GAME FLOW =================
+  function beginFromTitle() {
+    audio.init(); audio.resume(); audio.start();
+    audio.setMode('cine');
+    UI.showTitle(false);
+    UI.fade(false);
+    if (E.PARAMS.skipintro) { enterPlay(); return; }
+    state = 'intro';
+    introT = 0; subIdx = 0; castFired = false;
+    UI.letterbox(true);
+  }
+
+  function enterPlay() {
+    state = 'play';
+    playT = 0;
+    UI.letterbox(false);
+    UI.hideSubtitle();
+    UI.showHud(true);
+    UI.setHP(player.hp / player.maxHp);
+    UI.setCastle(castleHp / castleHpMax);
+    UI.setKills(kills);
+    audio.stopNarration();
+    audio.setMode('explore');
+    if (E.PARAMS.wave > 1) { waveIdx = E.PARAMS.wave - 1; }
+    waveState = 'intermission'; waveTimer = 1.4;
+    UI.hint('WASD move · LMB strike · Space roll · Shift sprint');
+    setTimeout(function () { UI.hint(''); }, 7000);
+  }
+
+  function startWave(i) {
+    waveIdx = i;
+    const w = WAVES[i];
+    UI.setWave(i + 1);
+    UI.banner('WAVE ' + w.name, w.sub, 3.8);
+    audio.horn();
+    audio.setMode('battle');
+    spawnQueue = w.n;
+    spawnTimer = 1.6;
+    waveState = 'spawning';
+  }
+
+  function spawnWraith(brute) {
+    let a = E.rand() * Math.PI * 2;
+    for (let tries = 0; tries < 8; tries++) {
+      a = E.rand() * Math.PI * 2;
+      const x = Math.cos(a), z = Math.sin(a);
+      if (!(z < -0.5 && Math.abs(x) < 0.35)) break; // avoid castle sector
+    }
+    const r = 46 + E.rand() * 8;
+    const pos = [Math.cos(a) * r, 0, Math.sin(a) * r];
+    const wr = E.Wraith(world, pos, brute);
+    enemies.push(wr);
+    particles.burst([pos[0], world.height(pos[0], pos[2]) + 0.4, pos[2]], 14, {
+      speed: 1.6, up: 1.4, life: 1.4, size: 0.5, sizeV: 0.8,
+      color: [0.28, 0.34, 0.42, 0.4], drag: 1.2
+    });
+    audio.wraithSpawn();
+  }
+
+  function hurtPlayer(dmg, from) {
+    if (player.invuln > 0 || player.dead) return;
+    player.takeDamage(dmg, from);
+    UI.flash();
+    UI.setHP(player.hp / player.maxHp);
+    audio.playerHurt();
+    cam.shake = Math.min(0.5, cam.shake + 0.3);
+    particles.burst([player.pos[0], player.pos[1] + 1.1, player.pos[2]], 8, {
+      speed: 3, life: 0.5, size: 0.12, color: [0.9, 0.15, 0.12, 0.8], grav: 4
+    });
+    if (player.dead) {
+      setTimeout(function () {
+        state = 'defeat';
+        UI.showScreen('defeat');
+        UI.showHud(false);
+        audio.setMode('cine');
+        audio.defeat();
+        try { document.exitPointerLock(); } catch (e) {}
+      }, 1400);
+    }
+  }
+
+  function hurtCastle(dmg, from) {
+    if (state !== 'play') return;
+    castleHp -= dmg;
+    UI.setCastle(castleHp / castleHpMax);
+    audio.castleHit();
+    cam.shake = Math.min(0.5, cam.shake + 0.15);
+    const gp = E.WORLD.GATE;
+    particles.burst([gp[0] + E.randRange(-3, 3), world.height(gp[0], gp[1]) + 3.5, gp[1] + 1], 10, {
+      speed: 3.5, up: 2, life: 0.8, size: 0.2, color: [0.5, 0.45, 0.4, 0.7], grav: 6
+    });
+    if (castleHp <= 0) {
+      castleHp = 0;
+      state = 'defeat';
+      UI.showScreen('defeat');
+      UI.showHud(false);
+      audio.setMode('cine');
+      audio.defeat();
+      try { document.exitPointerLock(); } catch (e) {}
+    }
+  }
+
+  function resolvePlayerAttack() {
+    if (!player.attackInfo || player.attackInfo === lastResolvedAttack) return;
+    lastResolvedAttack = player.attackInfo;
+    player.didHit = true;
+    const ai = player.attackInfo;
+    let hitAny = false;
+    for (const wr of enemies) {
+      if (wr.dead || wr.dying) continue;
+      const dx = wr.pos[0] - ai.origin[0], dz = wr.pos[2] - ai.origin[2];
+      const d = Math.hypot(dx, dz);
+      if (d > ai.range) continue;
+      const dot = (dx / d) * ai.dir[0] + (dz / d) * ai.dir[1];
+      if (dot < ai.arc) continue;
+      hitAny = true;
+      const res = wr.takeDamage(ai.dmg, ai.kb, [dx / d, dz / d]);
+      if (res === 'killed') {
+        kills++;
+        UI.setKills(kills);
+        audio.wraithDie();
+        particles.burst([wr.pos[0], wr.pos[1] + 0.9, wr.pos[2]], 26, {
+          speed: 3.4, up: 2.2, life: 1.1, size: 0.16, color: [0.5, 0.8, 1.0, 0.9], drag: 1.5
+        });
+        particles.burst([wr.pos[0], wr.pos[1] + 0.7, wr.pos[2]], 10, {
+          speed: 1.2, up: 1.0, life: 1.8, size: 0.7, sizeV: 1.2, color: [0.2, 0.25, 0.3, 0.35], drag: 1
+        });
+      } else if (res === 'hit') {
+        audio.swordHit(ai.dmg > 20);
+        particles.burst([wr.pos[0] - dx / d * 0.5, wr.pos[1] + 1.0, wr.pos[2] - dz / d * 0.5], 12, {
+          speed: 4.5, life: 0.4, size: 0.1, color: [0.75, 0.9, 1.0, 0.9], grav: 5
+        });
+      }
+    }
+    if (hitAny) cam.shake = Math.min(0.4, cam.shake + 0.12);
+  }
+
+  function resetGame() {
+    enemies = [];
+    kills = 0;
+    castleHp = castleHpMax;
+    player.hp = player.maxHp;
+    player.dead = false;
+    player.pos = [0, 0, 12];
+    player.yaw = Math.PI;
+    UI.setKills(0);
+    UI.showScreen(null);
+    UI.showHud(true);
+    UI.setHP(1);
+    UI.setCastle(1);
+    audio.setMode('explore');
+    waveIdx = 0;
+    waveState = 'intermission';
+    waveTimer = 1.5;
+    state = 'play';
+  }
+
+  // ================= PER-FRAME =================
+  function updateWave(dt) {
+    if (waveState === 'intermission') {
+      waveTimer -= dt;
+      if (waveTimer <= 0) {
+        if (waveIdx >= WAVES.length) {
+          state = 'victory';
+          UI.showScreen('victory');
+          UI.showHud(false);
+          audio.setMode('cine');
+          audio.victory();
+          try { document.exitPointerLock(); } catch (e) {}
+        } else startWave(waveIdx);
+      }
+    } else if (waveState === 'spawning') {
+      spawnTimer -= dt;
+      if (spawnTimer <= 0 && spawnQueue > 0) {
+        const w = WAVES[waveIdx];
+        const brutesLeft = w.brutes;
+        spawnWraith(false);
+        spawnQueue--;
+        spawnTimer = 0.85;
+        if (spawnQueue === 0 && waveIdx === 0) { /* done below */ }
+      }
+      if (spawnQueue === 0) { waveState = 'active'; }
+    } else if (waveState === 'active') {
+      let alive = 0;
+      for (const wr of enemies) if (!wr.dead) alive++;
+      if (alive === 0) {
+        waveState = 'intermission';
+        waveTimer = 7;
+        audio.setMode('explore');
+        if (waveIdx < WAVES.length) {
+          const w = WAVES[waveIdx];
+          UI.banner('WAVE ' + w.name + ' CLEARED', 'The night holds its breath...', 3.2);
+          // spawn brutes for NEXT wave count check happens at next start
+        }
+        waveIdx++;
+        if (waveIdx < WAVES.length && WAVES[waveIdx].brutes > 0) {
+          // schedule brutes at next wave spawn
+        }
+      }
+    }
+  }
+
+  function ambientEmitters(dt, spawn) {
+    // embers near player
+    if (Math.random() < dt * 7) {
+      const a = Math.random() * Math.PI * 2, r = Math.random() * 26;
+      const x = player.pos[0] + Math.cos(a) * r, z = player.pos[2] + Math.sin(a) * r;
+      spawn({
+        pos: [x, world.height(x, z) + Math.random() * 5 + 0.5, z],
+        vel: [Math.random() * 0.4 - 0.2, 0.5 + Math.random() * 0.9, Math.random() * 0.4 - 0.2],
+        life: 3 + Math.random() * 3, size: 0.05 + Math.random() * 0.08,
+        color: [1.0, 0.42 + Math.random() * 0.2, 0.12, 0.75], rotV: 2
+      });
+    }
+    // fireflies
+    if (Math.random() < dt * 4) {
+      const a = Math.random() * Math.PI * 2, r = 6 + Math.random() * 34;
+      const x = Math.cos(a) * r, z = Math.sin(a) * r;
+      spawn({
+        pos: [x, world.height(x, z) + 0.3 + Math.random() * 1.2, z],
+        vel: [Math.random() * 0.3 - 0.15, Math.random() * 0.1, Math.random() * 0.3 - 0.15],
+        life: 4 + Math.random() * 3, size: 0.05,
+        color: [0.55, 0.95, 0.45, 0.5]
+      });
+    }
+    // gate torch flames
+    const gp = E.WORLD.GATE;
+    for (const sx of [-1, 1]) {
+      if (Math.random() < dt * 14) {
+        const tx = gp[0] + sx * 5.2, tz = gp[1] + 1.2;
+        spawn({
+          pos: [tx + Math.random() * 0.2 - 0.1, world.height(tx, tz) + 2.0, tz + Math.random() * 0.2 - 0.1],
+          vel: [0, 1.6 + Math.random(), 0],
+          life: 0.35 + Math.random() * 0.25, size: 0.16 + Math.random() * 0.1, sizeV: -0.15,
+          color: [1.0, 0.55 + Math.random() * 0.2, 0.15, 0.85]
+        });
+      }
+    }
+    // staff orb wisps
+    if (Math.random() < dt * 5) {
+      const tip = wizard.staffTip();
+      spawn({
+        pos: [tip[0] + Math.random() * 0.3 - 0.15, tip[1] + Math.random() * 0.3 - 0.15, tip[2] + Math.random() * 0.3 - 0.15],
+        vel: [Math.random() * 0.4 - 0.2, 0.3 + Math.random() * 0.3, Math.random() * 0.4 - 0.2],
+        life: 1.2 + Math.random(), size: 0.05,
+        color: [0.5, 0.8, 1.0, 0.8]
+      });
+    }
+    // mist patches
+    if (Math.random() < dt * 0.9) {
+      const a = Math.random() * Math.PI * 2, r = 8 + Math.random() * 36;
+      const x = Math.cos(a) * r, z = Math.sin(a) * r;
+      spawn({
+        pos: [x, world.height(x, z) + 0.6 + Math.random(), z],
+        vel: [0.25, 0.01, 0.15],
+        life: 9 + Math.random() * 5, size: 5 + Math.random() * 7, sizeV: 0.4,
+        color: [0.5, 0.62, 0.8, 0.05], rot: Math.random() * 3
+      });
+    }
+  }
+
+  function updatePlay(dt) {
+    playT += dt;
+    player.update(dt, input, cam.yaw, time, { time: time, enemies: enemies, hurtPlayer: hurtPlayer });
+    resolvePlayerAttack();
+    wizard.update(dt, time);
+    for (const wr of enemies) wr.update(dt, time, { player: player, enemies: enemies, hurtPlayer: hurtPlayer, hurtCastle: hurtCastle });
+    for (let i = enemies.length - 1; i >= 0; i--) if (enemies[i].dead) enemies.splice(i, 1);
+    updateWave(dt);
+
+    // footsteps
+    if (player.moving && player.speedSm > 2.5) {
+      player._stepAcc = (player._stepAcc || 0) + dt * player.speedSm;
+      if (player._stepAcc > 2.4) {
+        player._stepAcc = 0;
+        audio.step();
+        particles.burst([player.pos[0], player.pos[1] + 0.05, player.pos[2]], 2, {
+          speed: 0.6, up: 0.5, life: 0.5, size: 0.14, sizeV: 0.5, color: [0.35, 0.33, 0.3, 0.25], drag: 2
+        });
+      }
+    }
+  }
+
+  let loopPaused = false;
+  let throttleAcc = 0;
+  function frame(nowMs) {
+    requestAnimationFrame(frame);
+    if (!renderer || loopPaused) return;
+    if (E.PARAMS.throttle) {
+      throttleAcc += (nowMs - (frame._last || nowMs)) || 16;
+      if (throttleAcc < E.PARAMS.throttle) return;
+      throttleAcc = 0;
+    }
+    const dt = Math.min(0.05, (nowMs - (frame._last || nowMs)) / 1000 || 0.016);
+    frame._last = nowMs;
+    time += dt;
+    fpsAcc += dt; fpsN++;
+    if (fpsAcc > 0.5) { fps = Math.round(fpsN / fpsAcc); fpsAcc = 0; fpsN = 0; if (E.PARAMS.debug) E.log('fps ' + fps + ' | enemies ' + enemies.length + ' | particles ' + particles.count); }
+
+    // simulate
+    if (state === 'title') {
+      cam.yaw += dt * 0.06;
+      cam.target = [0, 2.2, 2];
+      const d = 13;
+      cam.eye = [cam.target[0] + Math.sin(cam.yaw) * d, 4.5 + Math.sin(time * 0.1) * 0.8, cam.target[2] + Math.cos(cam.yaw) * d];
+      wizard.update(dt, time);
+      particles.update(dt, ambientEmitters);
+    } else if (state === 'intro') {
+      introT += dt;
+      const c = evalCine(introT);
+      cam.eye = c.eye; cam.target = c.look; cam.fov = c.fov;
+      // subtitles
+      if (subIdx < SUBS.length && introT >= SUBS[subIdx].t) {
+        const s = SUBS[subIdx];
+        UI.subtitle(s.name, s.text, s.d);
+        if (subIdx === 1) { if (!castFired) { wizard.cast(); castFired = true; audio.staffFlare(); } }
+        audio.narrate(s.text, s.d);
+        subIdx++;
+      }
+      if (subIdx === 1 && !castFired && introT >= SUBS[1].t) { wizard.cast(); castFired = true; audio.staffFlare(); }
+      wizard.update(dt, time);
+      player.update(dt, input, cam.yaw, time, { time: time, enemies: enemies });
+      particles.update(dt, ambientEmitters);
+      if (introT >= 33) enterPlay();
+    } else if (state === 'play') {
+      updatePlay(dt);
+      // third person camera
+      const p = player.pos;
+      const d = cam.dist;
+      let ex = p[0] + Math.sin(cam.yaw) * Math.cos(cam.pitch) * d;
+      let ez = p[2] + Math.cos(cam.yaw) * Math.cos(cam.pitch) * d;
+      let ey = p[1] + 1.5 + Math.sin(cam.pitch) * d;
+      const minY = world.height(ex, ez) + 0.4;
+      cam.eye = [ex, Math.max(ey, minY), ez];
+      cam.target = [p[0], p[1] + 1.35, p[2]];
+      cam.fov = 52;
+      particles.update(dt, ambientEmitters);
+    } else {
+      // end states: slow orbit around scene
+      cam.yaw += dt * 0.05;
+      cam.target = [0, 2.5, -20];
+      cam.eye = [Math.sin(cam.yaw) * 26, 7, -20 + Math.cos(cam.yaw) * 26];
+      wizard.update(dt, time);
+      particles.update(dt, ambientEmitters);
+    }
+
+    // camera shake
+    let eye = cam.eye, tgt = cam.target;
+    if (cam.shake > 0.001) {
+      cam.shake = Math.max(0, cam.shake - dt * 1.6);
+      const s = cam.shake * 0.35;
+      eye = [eye[0] + (Math.random() - 0.5) * s, eye[1] + (Math.random() - 0.5) * s, eye[2] + (Math.random() - 0.5) * s];
+    }
+    if (camOverride) { eye = camOverride.eye; tgt = camOverride.look; cam.fov = camOverride.fov || 50; }
+
+    // camera matrices
+    const aspect = renderer.width / renderer.height;
+    const view = M.lookAt(eye, tgt, [0, 1, 0]);
+    const proj = M.persp(cam.fov * Math.PI / 180, aspect, 0.1, 320);
+    const viewProj = M.mul(proj, view);
+    const camObj = {
+      viewProj: viewProj,
+      invVP: M.invert(viewProj),
+      eye: eye,
+      right: [view[0], view[4], view[8]],
+      up: [view[1], view[5], view[9]],
+      lightVP: M.ident()
+    };
+
+    // lights
+    const flick = 0.82 + Math.sin(time * 11) * 0.1 + Math.sin(time * 23) * 0.08;
+    const gh = world.height(E.WORLD.GATE[0], E.WORLD.GATE[1]);
+    const stp = wizard.staffTip();
+    const lights = [
+      { pos: [-5.2, gh + 2.1, E.WORLD.GATE[1] + 1.2], radius: 17, color: [1.0, 0.55, 0.22], intensity: 24 * flick },
+      { pos: [5.2, gh + 2.1, E.WORLD.GATE[1] + 1.2], radius: 17, color: [1.0, 0.55, 0.22], intensity: 24 * flick },
+      { pos: stp, radius: 13, color: [0.45, 0.75, 1.0], intensity: wizard.lightIntensity },
+      { pos: [5.5, world.height(5.5, 8.5) + 0.6, 8.5], radius: 11, color: [1.0, 0.6, 0.25], intensity: 14 * flick },
+      { pos: [0, -50, 0], radius: 0.001, color: [0, 0, 0], intensity: 0 },
+      { pos: [0, -50, 0], radius: 0.001, color: [0, 0, 0], intensity: 0 }
+    ];
+    const shadowTarget = [
+      player.pos[0] * 0.55 + E.WORLD.GATE[0] * 0.45,
+      2,
+      player.pos[2] * 0.55 + E.WORLD.GATE[1] * 0.45
+    ];
+
+    const env = {
+      sunDir: MOON, moonI: 1.05,
+      fog: [0.030, 0.044, 0.074], fogDensity: 0.0072,
+      time: time, wind: 0.55 + Math.sin(time * 0.23) * 0.2,
+      exposure: E.PARAMS.exposure || 1.24, grain: 0.045 + nostalgia * 0.03,
+      grassDist: 47, nostalgia: nostalgia, noBloom: E.PARAMS.nobloom ? 1 : 0, dbg: E.PARAMS.dbg,
+      lights: lights, shadowTarget: shadowTarget,
+      terrainMesh: world.terrain
+    };
+
+    // draw lists
+    const dynamics = [];
+    wizard.draws(dynamics);
+    player.draws(dynamics);
+    for (const wr of enemies) wr.draws(dynamics);
+    const dynamicCount = dynamics.length;
+    const allStatics = world.statics.concat(dynamics);
+
+    renderer.render(camObj, env, world.statics, dynamics, world.grass, particles, player.trail());
+    if (!frame._ready) { frame._ready = true; window.__READY = true; E.log('First frame rendered — world is live'); }
+  }
+
+  // ================= BOOT =================
+  async function boot() {
+    UI.init();
+    UI.fade(true, true);
+    audio = E.AudioSys();
+    if (E.PARAMS.mute) { /* still construct; master gain 0 set on init */ }
+    E.log('Loading WASM terrain core...');
+    await E.loadWasm();
+    const canvas = document.getElementById('gl');
+    E.log('Initializing WebGPU renderer...');
+    renderer = await E.createRenderer(canvas);
+    E.log('Forging the world...');
+    world = await E.buildWorld(renderer, E.WASM);
+    player = E.Player(world);
+    player.setDevice(renderer.device);
+    player.pos = [0, world.height(0, 12), 12];
+    wizard = E.Wizard(world);
+    particles = E.Particles();
+
+    // title screen
+    state = 'title';
+    UI.showTitle(true);
+    UI.fade(false);
+
+    // input
+    window.addEventListener('keydown', function (ev) {
+      input.k[ev.code] = true;
+      if (ev.code === 'Space' || ev.code === 'Tab') ev.preventDefault();
+      if (state === 'play' && ev.code === 'Space' && !ev.repeat) {
+        player.roll(M.fwdXZ(cam.yaw)[0] * 0 + (input.k['KeyW'] ? 1 : 0) * 1, 0);
+        // roll toward current move dir if any; simplified below
+      }
+      if (ev.code === 'KeyN' && !ev.repeat) { nostalgia = nostalgia > 0.5 ? 0 : 1; UI.banner(nostalgia ? 'NOSTALGIA MODE' : 'MODERN MODE', nostalgia ? 'Memories of 1998' : 'Crisp moonlight', 2); }
+      if (ev.code === 'Escape' && state === 'play') { /* pointerlock exit triggers pause */ }
+    });
+    window.addEventListener('keyup', function (ev) { input.k[ev.code] = false; });
+    canvas.addEventListener('mousedown', function (ev) {
+      if (state === 'title') { beginFromTitle(); return; }
+      if (state === 'intro') { enterPlay(); return; }
+      if (state === 'play' && ev.button === 0) {
+        if (document.pointerLockElement !== canvas) {
+          try { canvas.requestPointerLock(); } catch (e) {}
+          return;
+        }
+        if (player.attack()) audio.swordSwing(player.combo);
+      }
+    });
+    window.addEventListener('mousemove', function (ev) {
+      if (state !== 'play') return;
+      if (document.pointerLockElement === canvas) {
+        cam.yaw -= ev.movementX * 0.0032;
+        cam.pitch = E.clamp(cam.pitch + ev.movementY * 0.0028, -0.15, 1.05);
+      }
+    });
+    window.addEventListener('wheel', function (ev) {
+      if (state === 'play') cam.dist = E.clamp(cam.dist + Math.sign(ev.deltaY) * 0.5, 2.6, 8.5);
+    }, { passive: true });
+    document.addEventListener('pointerlockchange', function () {
+      if (document.pointerLockElement !== canvas && state === 'play' && !player.dead) {
+        state = 'paused';
+        UI.showScreen('pause');
+      }
+    });
+    window.addEventListener('keydown', function (ev) {
+      if (ev.code === 'Escape' && state === 'paused') { state = 'play'; UI.showScreen(null); }
+    });
+
+    // buttons
+    function bindRestart(id) {
+      const b = document.getElementById(id);
+      if (b) b.addEventListener('click', function () { resetGame(); });
+    }
+    bindRestart('btnRetry');
+    bindRestart('btnRetry2');
+    const resumeBtn = document.getElementById('btnResume');
+    if (resumeBtn) resumeBtn.addEventListener('click', function () {
+      state = 'play'; UI.showScreen(null);
+      try { canvas.requestPointerLock(); } catch (e) {}
+    });
+
+    // test hooks
+    window.__game = {
+      state: function () { return state; },
+      readPixels: async function () { loopPaused = true; await new Promise(r => setTimeout(r, 200)); const p = await renderer.debugRead(); loopPaused = false; return p; },
+      start: function () { if (state === 'title') beginFromTitle(); },
+      skipIntro: function () { if (state === 'intro') enterPlay(); },
+      pose: function (name) {
+        if (name === 'hero') {
+          player.pos = [2.6, world.height(2.6, 3.2), 3.2];
+          player.yaw = Math.PI * 0.85;
+          cam.yaw = 0.8; cam.pitch = 0.13; cam.dist = 3.6;
+          camOverride = null;
+        } else if (name === 'grass') {
+          camOverride = { eye: [4.2, 0.8, 10.5], look: [-1.0, 2.2, -30], fov: 48 };
+        } else if (name === 'cine') {
+          camOverride = { eye: [-2.6, 1.6, -0.6], look: [0.1, 1.5, -2.5], fov: 40 };
+          wizard.cast();
+          audio.init(); audio.resume(); audio.staffFlare();
+        } else if (name === 'combat') {
+          player.pos = [0, world.height(0, 6), 6];
+          player.yaw = Math.PI;
+          camOverride = { eye: [-4.2, 1.9, 8.6], look: [0.6, 1.2, 5.2], fov: 46 };
+          player.attackT = 0.2; player.attackDur = 0.52; player.combo = 0;
+          for (let i = 0; i < 4; i++) {
+            const a = i / 4 * Math.PI * 2 + 0.5;
+            enemies.push(E.Wraith(world, [player.pos[0] + Math.cos(a) * 3.2, 0, player.pos[2] + Math.sin(a) * 3.2], false));
+          }
+          for (const wr of enemies) { wr.state = 'chase'; wr.stateT = 0; }
+        } else if (name === 'clear') {
+          camOverride = null;
+        }
+      },
+      forceWave: function (n) {
+        waveIdx = E.clamp(n - 1, 0, WAVES.length - 1);
+        startWave(waveIdx);
+      },
+      spawn: function (n, brute) {
+        for (let i = 0; i < (n || 1); i++) spawnWraith(!!brute);
+      },
+      info: function () {
+        return { state: state, wave: waveIdx + 1, enemies: enemies.length, kills: kills, fps: fps, particles: particles.count, hp: player.hp, castle: castleHp, wasm: E.WASM.used };
+      },
+      resetGame: resetGame
+    };
+
+    E.log('Boot complete — awaiting souls at the title screen');
+    if (E.PARAMS.gputest) {
+      // longevity flow on the game's own device
+      const device = renderer.device;
+      const fmt = 'rgba8unorm';
+      const mod = device.createShaderModule({ code: `
+        @vertex fn vs(@builtin(vertex_index) i: u32) -> @builtin(position) vec4f {
+          var p = array<vec2f,3>(vec2f(-1.0,-1.0), vec2f(3.0,-1.0), vec2f(-1.0,3.0));
+          return vec4f(p[i], 0.0, 1.0); }
+        @fragment fn fs() -> @location(0) vec4f { return vec4f(0.15, 0.85, 0.3, 1.0); }` });
+      const pipe = device.createRenderPipeline({ layout: 'auto',
+        vertex: { module: mod, entryPoint: 'vs' },
+        fragment: { module: mod, entryPoint: 'fs', targets: [{ format: fmt }] },
+        primitive: { topology: 'triangle-list' } });
+      const tex = device.createTexture({ size: [64, 64], format: fmt, usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.COPY_SRC });
+      const rb = device.createBuffer({ size: 64 * 64 * 4, usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ });
+      const ub = device.createBuffer({ size: 512, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
+      const ubData = new Float32Array(128);
+      const img = new ImageData(64, 64);
+      let n = 0;
+      // depth-compare sampling test (mimics game shadow sampling)
+      const shadowTex2 = device.createTexture({ size: [2048, 2048], format: 'depth24plus', usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING });
+      const cmpSmp2 = device.createSampler({ compare: 'less' });
+      const depthMod = device.createShaderModule({ code: `
+        @group(0) @binding(0) var shadowTex : texture_depth_2d;
+        @group(0) @binding(1) var shadowSmp : sampler_comparison;
+        @vertex fn vs(@builtin(vertex_index) i: u32) -> @builtin(position) vec4f {
+          var p = array<vec2f,3>(vec2f(-1.0,-1.0), vec2f(3.0,-1.0), vec2f(-1.0,3.0));
+          return vec4f(p[i], 0.0, 1.0); }
+        @fragment fn fs(@builtin(position) fc: vec4f) -> @location(0) vec4f {
+          var s: f32 = 0.0;
+          for (var dy = -1; dy <= 1; dy++) {
+            for (var dx = -1; dx <= 1; dx++) {
+              s = s + textureSampleCompareLevel(shadowTex, shadowSmp,
+                    vec2f(0.5, 0.5) + vec2f(f32(dx), f32(dy)) * (1.0/2048.0), fc.z * 0.5);
+            }
+          }
+          let v = s / 9.0;
+          return vec4f(v, v, v, 1.0);
+        }` });
+      const depthPipe = device.createRenderPipeline({ layout: 'auto',
+        vertex: { module: depthMod, entryPoint: 'vs' },
+        fragment: { module: depthMod, entryPoint: 'fs', targets: [{ format: fmt }] },
+        primitive: { topology: 'triangle-list' } });
+      const bgDepth = device.createBindGroup({ layout: depthPipe.getBindGroupLayout(0),
+        entries: [{ binding: 0, resource: shadowTex2.createView() }, { binding: 1, resource: cmpSmp2 }] });
+      setInterval(async function () {
+        try {
+          device.queue.writeBuffer(ub, 0, ubData);
+          const enc = device.createCommandEncoder();
+          const pass = enc.beginRenderPass({ colorAttachments: [{ view: tex.createView(), loadOp: 'clear', storeOp: 'store', clearValue: { r: 0, g: 0, b: 0, a: 1 } }] });
+          if (E.PARAMS.depthtest) { pass.setPipeline(depthPipe); pass.setBindGroup(0, bgDepth); pass.draw(3); }
+          else if (!E.PARAMS.nodraw) { pass.setPipeline(pipe); pass.draw(3); }
+          pass.end();
+          enc.copyTextureToBuffer({ texture: tex }, { buffer: rb, bytesPerRow: 256, rowsPerImage: 64 }, [64, 64, 1]);
+          device.queue.submit([enc.finish()]);
+          await rb.mapAsync(GPUMapMode.READ);
+          img.data.set(new Uint8Array(rb.getMappedRange()));
+          rb.unmap();
+          n++;
+          E.log('gputest frame ' + n + ' ok, pixel=' + img.data[0] + ',' + img.data[1] + ',' + img.data[2] + ' (expect 0,0,0=clear color)');
+        } catch (e) { E.log('gputest err: ' + e.message); }
+      }, 1000);
+      return;
+    }
+    if (!E.PARAMS.noraf) requestAnimationFrame(frame);
+    else E.log('NORAF: render loop disabled for debugging');
+  }
+
+  window.__HDR8 = E.PARAMS.hdr8 === '1';
+  boot().catch(function (err) {
+    E.fatal((err && err.message ? err.message : String(err)) + (err && err.stack ? '\n' + err.stack : ''));
+  });
+})(window.E = window.E || {});
+  </script>
+</body>
+</html>
